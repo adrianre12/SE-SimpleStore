@@ -54,7 +54,7 @@ namespace SimpleStore.StoreBlock
             if (!MyAPIGateway.Session.IsServer)
                 return;
 
-            MyLog.Default.WriteLine("SimpleStoreBlock: loaded...");
+            MyLog.Default.WriteLine("SimpleStore.StoreBlock: loaded...");
         }
 
         public override void UpdateAfterSimulation100()
@@ -394,13 +394,13 @@ namespace SimpleStore.StoreBlock
                 }
                 else
                 {
-                    MyLog.Default.WriteLine("EconomySurvival.StoreBlock: Config Value error");
+                    MyLog.Default.WriteLine("SimpleStore.StoreBlock: Config Value error");
                 }
 
             }
             else
             {
-                MyLog.Default.WriteLine("EconomySurvival.StoreBlock: Config Syntax error");
+                MyLog.Default.WriteLine("SimpleStore.StoreBlock: Config Syntax error");
             }
         }
     }
