@@ -279,7 +279,7 @@ namespace SimpleStore.StoreBlock
 
             if (config.TryParse(myStoreBlock.CustomData))
             {
-                if (!config.ContainsSection(ConfigSettings) || !config.ContainsKey(ConfigSettings,Resell))
+                if (!config.ContainsSection(ConfigSettings) || !config.ContainsKey(ConfigSettings, Resell))
                     configOK = false;
 
                 resellItems = config.Get(ConfigSettings, Resell).ToBoolean();
