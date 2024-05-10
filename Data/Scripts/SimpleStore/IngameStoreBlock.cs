@@ -1,23 +1,17 @@
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.Common.ObjectBuilders.Definitions;
 using Sandbox.Definitions;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Localization;
 using Sandbox.ModAPI;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
-using VRage;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.Game.ModAPI.Ingame.Utilities;
 using VRage.ModAPI;
-using VRage.Network;
 using VRage.ObjectBuilders;
 using VRage.Utils;
 using VRageMath;
@@ -29,7 +23,7 @@ namespace SimpleStore.StoreBlock
     {
         const string ConfigSettings = "Settings";
 
-        List<string> BlacklistItems = new List<string>{ "Stone", "Ice", "Scrap", "Organic", "CubePlacerItem", "GoodAIRewardPunishmentTool" };
+        List<string> BlacklistItems = new List<string> { "Stone", "Ice", "Scrap", "Organic", "CubePlacerItem", "GoodAIRewardPunishmentTool" };
 
         IMyStoreBlock myStoreBlock;
         MyIni config = new MyIni();
@@ -40,93 +34,6 @@ namespace SimpleStore.StoreBlock
 
         List<IMyPlayer> Players = new List<IMyPlayer>();
         List<Sandbox.ModAPI.Ingame.MyStoreQueryItem> StoreItems = new List<Sandbox.ModAPI.Ingame.MyStoreQueryItem>();
-
- //       Dictionary<MyDefinitionId, int> ComponentMinimalPrice = new Dictionary<MyDefinitionId, int>();
- //       Dictionary<MyDefinitionId, int> BlockMinimalPrice = new Dictionary<MyDefinitionId, int>();
-
-        class ItemConfig
-        {
-            public class StoreItem
-            {
-                public int Count = 0;
-                public int Price = 0;
-
-                public override string ToString()
-                {
-                    return $"{Count}:{Price}";
-                }
-
-                public bool TryParse(string raw)
-                {
-                    string[] countPrice = raw.Split(':');
-                    if (countPrice.Length !=2)
-                        return false;
-
-                    if (!int.TryParse(countPrice[0], out this.Count))
-                        return false;
-
-                    if (!int.TryParse(countPrice[1], out this.Price))
-                        return false;
-
-                    return true;
-                }
-            }
-
-            const string errString = "<Error";
-
-            public StoreItem Buy;
-            public StoreItem Sell;
-            bool error = false;
-            bool removeError = false;
-            string raw;
-
-            public ItemConfig() 
-            {
-                Buy = new StoreItem();
-                Sell = new StoreItem();
-                raw = "";
-            }
-
-            public bool TryParse(string raw)
-            {
-                this.raw = raw;
-                this.error = true;
-                string[] buySell = raw.Split(',');
-                if(buySell.Length < 2) 
-                    return false;
-
-                if (!this.Buy.TryParse(buySell[0]))
-                    return false;
-
-                if (!this.Sell.TryParse(buySell[1]))
-                    return false;
-
-                if (buySell.Length >2 && buySell[2].Contains(errString))
-                {
-                    this.removeError = true;
-                }
-
-                this.error = false;
-                return true;
-            }
-
-            public override string ToString()
-            {
-                if (this.error)
-                {
-                    if (this.raw.Contains(errString))
-                        return raw;
-                    return $"{raw},{errString}";
-                }
-                return $"{Buy},{Sell}";
-            }
-
-            public bool IsRemoveError()
-            {
-                return this.removeError;
-            }
-        }
-
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
@@ -152,7 +59,7 @@ namespace SimpleStore.StoreBlock
             {
                 lastBlockEnabledState = myStoreBlock.Enabled;
 
-                if(!TryLoadConfig())
+                if (!TryLoadConfig())
                     return;
 
                 UpdateShop = true;
@@ -165,6 +72,8 @@ namespace SimpleStore.StoreBlock
 
             if (!UpdateShop && UpdateCounter <= 750)
                 return;
+
+            MyLog.Default.WriteLine("SimpleStore.StoreBlock: Starting to update store");
 
             myStoreBlock.GetPlayerStoreItems(StoreItems);
 
@@ -214,25 +123,25 @@ namespace SimpleStore.StoreBlock
                 if (prefab == null && itemConfig.Buy.Count > 0)
                 {
                     itemData = new MyStoreItemData(definition.Id, itemConfig.Buy.Count, itemConfig.Buy.Price, null, null);
+                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOrder {definition.Id.SubtypeName}");
                     result = myStoreBlock.InsertOrder(itemData, out id);
-                }
-
-                if (result != Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
-                {
-                    MyLog.Default.WriteLine("SimpleStore.StoreBlock: result " + result);
-                    break;
+                    if (result != Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
+                        MyLog.Default.WriteLine("SimpleStore.StoreBlock: Buy result " + result);
                 }
 
                 //sell
+                if (itemConfig.Sell.Count > 0)
                 {
                     itemData = new MyStoreItemData(definition.Id, itemConfig.Sell.Count, itemConfig.Sell.Price,
                         (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransaction(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
+                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOffer {definition.Id.SubtypeName}");
                     result = myStoreBlock.InsertOffer(itemData, out id);
 
                     if (result == Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
-                    {
                         MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, definition.Id, itemConfig.Sell.Count);
-                    }
+                    else
+                        MyLog.Default.WriteLine("SimpleStore.StoreBlock: Sell result " + result);
+
                 }
             }
 
@@ -251,7 +160,7 @@ namespace SimpleStore.StoreBlock
 
                 IMyPlayer player = Players.FirstOrDefault(_player => _player.IdentityId == buyerSeller);
 
-                if  (player != null)
+                if (player != null)
                 {
                     var inventory = player.Character.GetInventory();
                     var item = inventory.FindItem(compDef.Id);
@@ -311,179 +220,12 @@ namespace SimpleStore.StoreBlock
             }
         }
 
-        /*private void CalculateItemMinimalPrice(MyDefinitionId itemId, float baseCostProductionSpeedMultiplier, ref int minimalPrice)
-        {
-            minimalPrice = 0;
-            MyPhysicalItemDefinition myPhysicalItemDefinition;
-            if (MyDefinitionManager.Static.TryGetDefinition(itemId, out myPhysicalItemDefinition) && myPhysicalItemDefinition.MinimalPricePerUnit != -1)
-            {
-                minimalPrice += myPhysicalItemDefinition.MinimalPricePerUnit;
-                return;
-            }
-            MyBlueprintDefinitionBase myBlueprintDefinitionBase;
-            if (!MyDefinitionManager.Static.TryGetBlueprintDefinitionByResultId(itemId, out myBlueprintDefinitionBase))
-            {
-                return;
-            }
-            float num = myPhysicalItemDefinition.IsIngot ? 1f : MyAPIGateway.Session.AssemblerEfficiencyMultiplier;
-            int num2 = 0;
-            foreach (MyBlueprintDefinitionBase.Item item in myBlueprintDefinitionBase.Prerequisites)
-            {
-                int num3 = 0;
-                CalculateItemMinimalPrice(item.Id, baseCostProductionSpeedMultiplier, ref num3);
-                float num4 = (float)item.Amount / num;
-                num2 += (int)((float)num3 * num4);
-            }
-            float num5 = myPhysicalItemDefinition.IsIngot ? MyAPIGateway.Session.RefinerySpeedMultiplier : MyAPIGateway.Session.AssemblerSpeedMultiplier;
-            for (int j = 0; j < myBlueprintDefinitionBase.Results.Length; j++)
-            {
-                MyBlueprintDefinitionBase.Item item2 = myBlueprintDefinitionBase.Results[j];
-                if (item2.Id == itemId)
-                {
-                    float num6 = (float)item2.Amount;
-                    if (num6 != 0f)
-                    {
-                        float num7 = 1f + (float)Math.Log((double)(myBlueprintDefinitionBase.BaseProductionTimeInSeconds + 1f)) * baseCostProductionSpeedMultiplier / num5;
-                        minimalPrice += (int)((float)num2 * (1f / num6) * num7);
-                        return;
-                    }
-                }
-            }
-        }*/
-
-        /*    public void CalculatePrefabMinimalPrice(string prefabName, float baseCostProductionSpeedMultiplier, ref int minimalPrice)
-            {
-                minimalPrice = 0;
-                int num = 0;
-                MyPrefabDefinition prefabDefinition = MyDefinitionManager.Static.GetPrefabDefinition(prefabName);
-                if (prefabDefinition != null && prefabDefinition.CubeGrids != null && prefabDefinition.CubeGrids.Length != 0 && !string.IsNullOrEmpty(prefabDefinition.CubeGrids[0].DisplayName))
-                {
-                    MyObjectBuilder_CubeGrid[] cubeGrids = prefabDefinition.CubeGrids;
-                    for (int j = 0; j < cubeGrids.Length; j++)
-                    {
-                        foreach (MyObjectBuilder_CubeBlock myObjectBuilder_CubeBlock in cubeGrids[j].CubeBlocks)
-                        {
-                            MyDefinitionId myDefinitionId = new MyDefinitionId(myObjectBuilder_CubeBlock.TypeId, myObjectBuilder_CubeBlock.SubtypeName);
-                            if (!BlockMinimalPrice.TryGetValue(myDefinitionId, out num))
-                            {
-                                CalculateBlockMinimalPrice(myDefinitionId, baseCostProductionSpeedMultiplier, ref num);
-                            }
-
-                            minimalPrice += num;
-                        }
-                    }
-                }
-            }*/
-
-        /* private void CalculateBlockMinimalPrice(MyDefinitionId blockId, float baseCostProductionSpeedMultiplier, ref int minimalPrice)
-         {
-             minimalPrice = 0;
-             MyCubeBlockDefinition myCubeBlockDefinition;
-             if (!MyDefinitionManager.Static.TryGetCubeBlockDefinition(blockId, out myCubeBlockDefinition))
-             {
-                 return;
-             }
-
-             foreach (MyCubeBlockDefinition.Component component in myCubeBlockDefinition.Components)
-             {
-                 int num = 0;
-                 if (!ComponentMinimalPrice.TryGetValue(component.Definition.Id, out num))
-                 {
-                     CalculateItemMinimalPrice(component.Definition.Id, baseCostProductionSpeedMultiplier, ref num);
-                     ComponentMinimalPrice[component.Definition.Id] = num;
-                 }
-                 minimalPrice += num * component.Count;
-             }
-         }*/
-
-        /*
-           foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions())
-            {
-                var maxAmount = 0;
-                var typeId = definition.Id.TypeId.ToString();
-
-                match = Regex.Match(typeId + definition.Id.SubtypeName, @"[\[\]\r\n|=]");
-
-                if (match.Success)
-                    continue;
-
-                var currentInvItemAmount = MyVisualScriptLogicProvider.GetEntityInventoryItemAmount(myStoreBlock.Name, definition.Id);
-                MyVisualScriptLogicProvider.RemoveFromEntityInventory(myStoreBlock.Name, definition.Id, currentInvItemAmount);
-
-                if (!config.ContainsSection(typeId) || !config.ContainsKey(typeId, definition.Id.SubtypeName))
-                    continue;
-
-                if (!config.Get(typeId, definition.Id.SubtypeName).ToBoolean())
-                    continue;
-
-                var prefab = MyDefinitionManager.Static.GetPrefabDefinition(definition.Id.SubtypeName);
-
-                if (definition.Id.TypeId == typeof(MyObjectBuilder_Component) || definition.Id.TypeId == typeof(MyObjectBuilder_Ore)
-                    || definition.Id.TypeId == typeof(MyObjectBuilder_Ingot))
-                {
-                    maxAmount = prefab == null ? config.Get(ConfigSettings, ConfigComponent).ToInt32() : config.Get(ConfigSettings, ConfigShip).ToInt32();
-                }
-                else if (definition.Id.TypeId == typeof(MyObjectBuilder_AmmoMagazine))
-                {
-                    maxAmount = config.Get(ConfigSettings, ConfigAmmo).ToInt32();
-                }
-                else if (definition.Id.TypeId == typeof(MyObjectBuilder_PhysicalGunObject) || definition.Id.TypeId == typeof(MyObjectBuilder_OxygenContainerObject)
-                    || definition.Id.TypeId == typeof(MyObjectBuilder_GasContainerObject) || definition.Id.TypeId == typeof(MyObjectBuilder_ConsumableItem))
-                {
-                    maxAmount = config.Get(ConfigSettings, ConfigCharacter).ToInt32();
-                }
-
-                var minimalPrice = 0;
-                var result = Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success;
-                var orderOrOffer = random.Next(0, 3);
-
-                if (prefab == null)
-                {
-                    CalculateItemMinimalPrice(definition.Id, 1f, ref minimalPrice);
-                }
-                else
-                {
-                    CalculatePrefabMinimalPrice(prefab.Id.SubtypeName, 1f, ref minimalPrice);
-                }
-
-                long id;
-                MyStoreItemData itemData;
-
-                var itemAmount = random.Next(1, Math.Max(maxAmount + 1, 1));
-                var itemPrice = (int)Math.Round(minimalPrice * ((random.Next(5000, 15001) / 100000.0f) + 1.0f));
-
-                if (orderOrOffer == 0)
-                {
-                    itemData = new MyStoreItemData(definition.Id, itemAmount, itemPrice,
-                        (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransaction(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
-                    result = myStoreBlock.InsertOffer(itemData, out id);
-
-                    if (result == Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
-                    {
-                        MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, definition.Id, itemAmount);
-                    }
-                }
-                else if (prefab == null && orderOrOffer == 2)
-                {
-                    itemData = new MyStoreItemData(definition.Id, itemAmount, (int)Math.Round(itemPrice * 0.7), null, null);
-                    result = myStoreBlock.InsertOrder(itemData, out id);
-                }
-
-                if (result != Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
-                {
-                    MyLog.Default.WriteLine("SimpleStore.StoreBlock: result " + result);
-                    break;
-                }
-            }
-
-            UpdateCounter = 0;
-            UpdateShop = false;
-         */
 
         private void CreateConfig()
         {
             config.AddSection(ConfigSettings);
             config.SetSectionComment(ConfigSettings, "Do not activate too many objects the store has a limited number of slots");
+            config.SetSectionComment(ConfigSettings, "Format is BuyAmount:BuyPrice,SellAmount:SellPrice");
 
             config.AddSection("MyObjectBuilder_Ore");
             config.AddSection("MyObjectBuilder_Ingot");
@@ -497,7 +239,7 @@ namespace SimpleStore.StoreBlock
             string typeId;
             Match match;
 
-            string defaultItemConfig = new ItemConfig().ToString();
+            ItemConfig defaultItemConfig = new ItemConfig();
 
             foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions())
             {
@@ -506,9 +248,14 @@ namespace SimpleStore.StoreBlock
 
                 typeId = definition.Id.TypeId.ToString();
                 match = Regex.Match(typeId + definition.Id.SubtypeName, @"[\[\]\r\n|=]");
+                if (match.Success)
+                    continue;
 
-                if (!match.Success && config.ContainsSection(typeId))
-                    config.Set(typeId, definition.Id.SubtypeName, defaultItemConfig);
+                if (config.ContainsSection(typeId))
+                {
+                    defaultItemConfig.SetDefaultPrices(definition.Id);
+                    config.Set(typeId, definition.Id.SubtypeName, defaultItemConfig.ToString());
+                }
             }
 
             config.Invalidate();
@@ -517,6 +264,8 @@ namespace SimpleStore.StoreBlock
 
         private bool TryLoadConfig()
         {
+            MyLog.Default.WriteLine("SimpleStore.StoreBlock: Start TryLoadConfig");
+
             bool configOK = true;
             bool updateConfig = false;
 
@@ -531,12 +280,13 @@ namespace SimpleStore.StoreBlock
                 string rawIniValue;
 
                 config.GetSections(sections);
-                foreach ( var section in sections)
+                foreach (var section in sections)
                 {
                     config.GetKeys(section, keys);
-                    foreach ( var key in keys)
+                    foreach (var key in keys)
                     {
-                        if(!config.Get(section,key.Name).TryGetString(out rawIniValue)){
+                        if (!config.Get(section, key.Name).TryGetString(out rawIniValue))
+                        {
                             configOK = false;
                             MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Failed to get {section}:{key.Name}");
                             break;
@@ -562,14 +312,13 @@ namespace SimpleStore.StoreBlock
                 {
                     config.Invalidate();
                     myStoreBlock.CustomData = config.ToString();
-                    TryLoadConfig();
                 }
 
                 if (!configOK)
                 {
                     MyLog.Default.WriteLine("SimpleStore.StoreBlock: Config Value error");
                 }
-                
+
             }
             else
             {
