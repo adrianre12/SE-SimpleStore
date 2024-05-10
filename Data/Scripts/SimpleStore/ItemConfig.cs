@@ -1,12 +1,15 @@
 ﻿using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using System;
+using System.Collections.Generic;
 using VRage.Game;
 
 namespace SimpleStore.StoreBlock
 {
     class ItemConfig
     {
+        Dictionary<MyDefinitionId, int> ComponentMinimalPrice = new Dictionary<MyDefinitionId, int>();
+        Dictionary<MyDefinitionId, int> BlockMinimalPrice = new Dictionary<MyDefinitionId, int>();
         public class StoreItem
         {
             public int Count = 0;
@@ -99,7 +102,7 @@ namespace SimpleStore.StoreBlock
             }
             else
             {
-                minimalPrice = 0; // CalculatePrefabMinimalPrice(prefab.Id.SubtypeName, 1f,ref minimalPrice);
+                CalculatePrefabMinimalPrice(prefab.Id.SubtypeName, 1f, ref minimalPrice);
             }
 
             this.Buy.Price = minimalPrice;
@@ -112,6 +115,7 @@ namespace SimpleStore.StoreBlock
         //Removed log meassage
         private void CalculateItemMinimalPrice(MyDefinitionId itemId, float baseCostProductionSpeedMultiplier, ref int minimalPrice)
         {
+            minimalPrice = 0;
             MyPhysicalItemDefinition myPhysicalItemDefinition = null;
             if (MyDefinitionManager.Static.TryGetDefinition<MyPhysicalItemDefinition>(itemId, out myPhysicalItemDefinition) && myPhysicalItemDefinition.MinimalPricePerUnit != -1)
             {
@@ -149,135 +153,57 @@ namespace SimpleStore.StoreBlock
             }
         }
 
-
-        /*          public int CalculatePrefabMinimalPrice(string prefabName, float baseCostProductionSpeedMultiplier)
-                  {
-                      int minimumPrice = 0;
-                      int num = 0;
-                      MyPrefabDefinition prefabDefinition = MyDefinitionManager.Static.GetPrefabDefinition(prefabName);
-                      if (prefabDefinition != null && prefabDefinition.CubeGrids != null && prefabDefinition.CubeGrids.Length != 0 && !string.IsNullOrEmpty(prefabDefinition.CubeGrids[0].DisplayName))
-                      {
-                          MyObjectBuilder_CubeGrid[] cubeGrids = prefabDefinition.CubeGrids;
-                          for (int j = 0; j < cubeGrids.Length; j++)
-                          {
-                              foreach (MyObjectBuilder_CubeBlock myObjectBuilder_CubeBlock in cubeGrids[j].CubeBlocks)
-                              {
-                                  MyDefinitionId myDefinitionId = new MyDefinitionId(myObjectBuilder_CubeBlock.TypeId, myObjectBuilder_CubeBlock.SubtypeName);
-                                  if (!BlockMinimalPrice.TryGetValue(myDefinitionId, out num))
-                                  {
-                                      CalculateBlockMinimalPrice(myDefinitionId, baseCostProductionSpeedMultiplier, ref num);
-                                  }
-
-                                  minimalPrice += num;
-                              }
-                          }
-                      }
-                  }*/
-
-        /* private void CalculateBlockMinimalPrice(MyDefinitionId blockId, float baseCostProductionSpeedMultiplier, ref int minimalPrice)
-         {
-             minimalPrice = 0;
-             MyCubeBlockDefinition myCubeBlockDefinition;
-             if (!MyDefinitionManager.Static.TryGetCubeBlockDefinition(blockId, out myCubeBlockDefinition))
-             {
-                 return;
-             }
-
-             foreach (MyCubeBlockDefinition.Component component in myCubeBlockDefinition.Components)
-             {
-                 int num = 0;
-                 if (!ComponentMinimalPrice.TryGetValue(component.Definition.Id, out num))
-                 {
-                     CalculateItemMinimalPrice(component.Definition.Id, baseCostProductionSpeedMultiplier, ref num);
-                     ComponentMinimalPrice[component.Definition.Id] = num;
-                 }
-                 minimalPrice += num * component.Count;
-             }
-         }*/
-
-        /*
-           foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions())
+        //Sandbox.Game.World.Generator.MyMinimalPriceCalculator
+        //Derived from CalculatePrefabInformation
+        public void CalculatePrefabMinimalPrice(string prefabName, float baseCostProductionSpeedMultiplier, ref int minimalPrice)
+        {
+            minimalPrice = 0;
+            int num = 0;
+            MyPrefabDefinition prefabDefinition = MyDefinitionManager.Static.GetPrefabDefinition(prefabName);
+            if (prefabDefinition != null && prefabDefinition.CubeGrids != null && prefabDefinition.CubeGrids.Length != 0 && !string.IsNullOrEmpty(prefabDefinition.CubeGrids[0].DisplayName))
             {
-                var maxAmount = 0;
-                var typeId = definition.Id.TypeId.ToString();
-
-                match = Regex.Match(typeId + definition.Id.SubtypeName, @"[\[\]\r\n|=]");
-
-                if (match.Success)
-                    continue;
-
-                var currentInvItemAmount = MyVisualScriptLogicProvider.GetEntityInventoryItemAmount(myStoreBlock.Name, definition.Id);
-                MyVisualScriptLogicProvider.RemoveFromEntityInventory(myStoreBlock.Name, definition.Id, currentInvItemAmount);
-
-                if (!config.ContainsSection(typeId) || !config.ContainsKey(typeId, definition.Id.SubtypeName))
-                    continue;
-
-                if (!config.Get(typeId, definition.Id.SubtypeName).ToBoolean())
-                    continue;
-
-                var prefab = MyDefinitionManager.Static.GetPrefabDefinition(definition.Id.SubtypeName);
-
-                if (definition.Id.TypeId == typeof(MyObjectBuilder_Component) || definition.Id.TypeId == typeof(MyObjectBuilder_Ore)
-                    || definition.Id.TypeId == typeof(MyObjectBuilder_Ingot))
+                MyObjectBuilder_CubeGrid[] cubeGrids = prefabDefinition.CubeGrids;
+                for (int j = 0; j < cubeGrids.Length; j++)
                 {
-                    maxAmount = prefab == null ? config.Get(ConfigSettings, ConfigComponent).ToInt32() : config.Get(ConfigSettings, ConfigShip).ToInt32();
-                }
-                else if (definition.Id.TypeId == typeof(MyObjectBuilder_AmmoMagazine))
-                {
-                    maxAmount = config.Get(ConfigSettings, ConfigAmmo).ToInt32();
-                }
-                else if (definition.Id.TypeId == typeof(MyObjectBuilder_PhysicalGunObject) || definition.Id.TypeId == typeof(MyObjectBuilder_OxygenContainerObject)
-                    || definition.Id.TypeId == typeof(MyObjectBuilder_GasContainerObject) || definition.Id.TypeId == typeof(MyObjectBuilder_ConsumableItem))
-                {
-                    maxAmount = config.Get(ConfigSettings, ConfigCharacter).ToInt32();
-                }
-
-                var minimalPrice = 0;
-                var result = Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success;
-                var orderOrOffer = random.Next(0, 3);
-
-                if (prefab == null)
-                {
-                    CalculateItemMinimalPrice(definition.Id, 1f, ref minimalPrice);
-                }
-                else
-                {
-                    CalculatePrefabMinimalPrice(prefab.Id.SubtypeName, 1f, ref minimalPrice);
-                }
-
-                long id;
-                MyStoreItemData itemData;
-
-                var itemAmount = random.Next(1, Math.Max(maxAmount + 1, 1));
-                var itemPrice = (int)Math.Round(minimalPrice * ((random.Next(5000, 15001) / 100000.0f) + 1.0f));
-
-                if (orderOrOffer == 0)
-                {
-                    itemData = new MyStoreItemData(definition.Id, itemAmount, itemPrice,
-                        (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransaction(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
-                    result = myStoreBlock.InsertOffer(itemData, out id);
-
-                    if (result == Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
+                    foreach (MyObjectBuilder_CubeBlock myObjectBuilder_CubeBlock in cubeGrids[j].CubeBlocks)
                     {
-                        MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, definition.Id, itemAmount);
+                        MyDefinitionId myDefinitionId = new MyDefinitionId(myObjectBuilder_CubeBlock.TypeId, myObjectBuilder_CubeBlock.SubtypeName);
+                        if (!BlockMinimalPrice.TryGetValue(myDefinitionId, out num))
+                        {
+                            CalculateBlockMinimalPrice(myDefinitionId, baseCostProductionSpeedMultiplier, ref num);
+                            BlockMinimalPrice[myDefinitionId] = num;
+                        }
+
+                        minimalPrice += num;
                     }
                 }
-                else if (prefab == null && orderOrOffer == 2)
-                {
-                    itemData = new MyStoreItemData(definition.Id, itemAmount, (int)Math.Round(itemPrice * 0.7), null, null);
-                    result = myStoreBlock.InsertOrder(itemData, out id);
-                }
+            }
+        }
 
-                if (result != Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
-                {
-                    MyLog.Default.WriteLine("SimpleStore.StoreBlock: result " + result);
-                    break;
-                }
+        //Sandbox.Game.World.Generator.MyMinimalPriceCalculator
+        //Derived from CalculateBlockMinimalPriceAndPcu
+        //Removed pcu calc
+        //Changed m_minimalPrices to ComponentMinimalPrice
+        private void CalculateBlockMinimalPrice(MyDefinitionId blockId, float baseCostProductionSpeedMultiplier, ref int minimalPrice)
+        {
+            minimalPrice = 0;
+            MyCubeBlockDefinition myCubeBlockDefinition;
+            if (!MyDefinitionManager.Static.TryGetCubeBlockDefinition(blockId, out myCubeBlockDefinition))
+            {
+                return;
             }
 
-            UpdateCounter = 0;
-            UpdateShop = false;
-         */
+            foreach (MyCubeBlockDefinition.Component component in myCubeBlockDefinition.Components)
+            {
+                int num = 0;
+                if (!ComponentMinimalPrice.TryGetValue(component.Definition.Id, out num))
+                {
+                    CalculateItemMinimalPrice(component.Definition.Id, baseCostProductionSpeedMultiplier, ref num);
+                    ComponentMinimalPrice[component.Definition.Id] = num;
+                }
+                minimalPrice += num * component.Count;
+            }
+        }
     }
 
 }
