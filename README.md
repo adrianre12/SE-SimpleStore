@@ -7,6 +7,7 @@ The optional auto resell allows the SimpleStore to sell items that have been bou
 Example: Configured to sell 1000 Ice and buy 50000 ice. Someone sells  50000 ice and at the next refresh the store will be selling 51000 ice.
 
 If SimpleStore is run with an empty Custom Data it auto-populates it with all Ores, Ingots,  Components,  Ammunition,  Tools, Weapons, Bottles and Consumable Items. This includes items of these categories from mods.
+All prices are set at the minimum SE allows. If you use a mod to change prices SimpleStore will use those instead.
 
 It can also sell ships and rovers, and it comes pre-configured with a selection of built-in ships but it is easy to add custom ones.
 
