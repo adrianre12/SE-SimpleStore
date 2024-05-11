@@ -105,8 +105,8 @@ namespace SimpleStore.StoreBlock
                 CalculatePrefabMinimalPrice(prefab.Id.SubtypeName, 1f, ref minimalPrice);
             }
 
-            this.Buy.Price = minimalPrice;
-            this.Sell.Price = minimalPrice;
+            this.Buy.Price = Math.Max(minimalPrice,1); // Keen wont allow 0 price
+            this.Sell.Price = Math.Max(minimalPrice, 1);
         }
 
 
