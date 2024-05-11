@@ -97,20 +97,19 @@ namespace SimpleStore.StoreBlock
 
             foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions())
             {
-                var typeId = definition.Id.TypeId.ToString();
-
-                match = Regex.Match(typeId + definition.Id.SubtypeName, @"[\[\]\r\n|=]");
-
+                match = Regex.Match(definition.Id.TypeId.ToString() + definition.Id.SubtypeName, @"[\[\]\r\n|=]");
                 if (match.Success)
                     continue;
+
+                var section = definition.Id.TypeId.ToString().Remove(0, 16);
 
                 var currentInvItemAmount = MyVisualScriptLogicProvider.GetEntityInventoryItemAmount(myStoreBlock.Name, definition.Id);
                 MyVisualScriptLogicProvider.RemoveFromEntityInventory(myStoreBlock.Name, definition.Id, currentInvItemAmount);
 
-                if (!config.ContainsSection(typeId) || !config.ContainsKey(typeId, definition.Id.SubtypeName))
+                if (!config.ContainsSection(section) || !config.ContainsKey(section, definition.Id.SubtypeName))
                     continue;
 
-                if (!config.Get(typeId, definition.Id.SubtypeName).TryGetString(out rawIniValue))
+                if (!config.Get(section, definition.Id.SubtypeName).TryGetString(out rawIniValue))
                     continue;
 
                 if (!itemConfig.TryParse(rawIniValue))
@@ -128,21 +127,21 @@ namespace SimpleStore.StoreBlock
                 long id;
                 MyStoreItemData itemData;
 
-                //buy
-                if (prefab == null && itemConfig.Buy.Count > 0)
+                //sell from the players point of view
+                if (prefab == null && itemConfig.Sell.Count > 0)
                 {
-                    itemData = new MyStoreItemData(definition.Id, itemConfig.Buy.Count, itemConfig.Buy.Price, null, null);
+                    itemData = new MyStoreItemData(definition.Id, itemConfig.Sell.Count, itemConfig.Sell.Price, null, null);
                     MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOrder {definition.Id.SubtypeName}");
                     result = myStoreBlock.InsertOrder(itemData, out id);
                     if (result != Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
-                        MyLog.Default.WriteLine("SimpleStore.StoreBlock: Buy result " + result);
+                        MyLog.Default.WriteLine("SimpleStore.StoreBlock: Sell result " + result);
                 }
 
-                //sell
-                if (itemConfig.Sell.Count > 0)
+                //buy
+                if (itemConfig.Buy.Count > 0)
                 {
-                    int sellCount = resellItems ? Math.Max(itemConfig.Sell.Count, currentInvItemAmount) : itemConfig.Sell.Count;
-                    itemData = new MyStoreItemData(definition.Id, sellCount, itemConfig.Sell.Price,
+                    int sellCount = resellItems ? Math.Max(itemConfig.Buy.Count, currentInvItemAmount) : itemConfig.Buy.Count;
+                    itemData = new MyStoreItemData(definition.Id, sellCount, itemConfig.Buy.Price,
                         (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransaction(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
                     MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOffer {definition.Id.SubtypeName}");
                     result = myStoreBlock.InsertOffer(itemData, out id);
@@ -150,7 +149,7 @@ namespace SimpleStore.StoreBlock
                     if (result == Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
                         MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, definition.Id, sellCount);
                     else
-                        MyLog.Default.WriteLine("SimpleStore.StoreBlock: Sell result " + result);
+                        MyLog.Default.WriteLine("SimpleStore.StoreBlock: Buy result " + result);
 
                 }
             }
@@ -233,10 +232,11 @@ namespace SimpleStore.StoreBlock
 
         private void CreateConfig()
         {
+            config.Clear();
             config.AddSection(ConfigSettings);
             var sb = new StringBuilder();
             sb.AppendLine("Do not activate too many objects, the store has a limited number of slots.");
-            sb.AppendLine("Auto-generated prices are the Keen minimum, setting lower value will log an error");
+            sb.AppendLine("Auto-generated prices are the Keen minimum, setting lower value will log an error.");
             sb.AppendLine("To force a store refresh, turn store block off wait 3s and turn it on. Auto update is every 20 minutes");
             sb.AppendLine("Config errors will cause the store block to turn off");
             sb.AppendLine("Format is BuyAmount:BuyPrice,SellAmount:SellPrice");
@@ -245,16 +245,16 @@ namespace SimpleStore.StoreBlock
             config.Set(ConfigSettings, Resell, true);
             config.Set(ConfigSettings, SpawnDistance, DefaultSpawnDistance);
 
-            config.AddSection("MyObjectBuilder_Ore");
-            config.AddSection("MyObjectBuilder_Ingot");
-            config.AddSection("MyObjectBuilder_PhysicalGunObject");
-            config.AddSection("MyObjectBuilder_AmmoMagazine");
-            config.AddSection("MyObjectBuilder_Component");
-            config.AddSection("MyObjectBuilder_OxygenContainerObject");
-            config.AddSection("MyObjectBuilder_GasContainerObject");
-            config.AddSection("MyObjectBuilder_ConsumableItem");
+            config.AddSection("Ore");
+            config.AddSection("Ingot");
+            config.AddSection("PhysicalGunObject");
+            config.AddSection("AmmoMagazine");
+            config.AddSection("Component");
+            config.AddSection("OxygenContainerObject");
+            config.AddSection("GasContainerObject");
+            config.AddSection("ConsumableItem");
 
-            string typeId;
+            string section;
             Match match;
 
             ItemConfig defaultItemConfig = new ItemConfig();
@@ -264,15 +264,16 @@ namespace SimpleStore.StoreBlock
                 if (BlacklistItems.Contains(definition.Id.SubtypeName))
                     continue;
 
-                typeId = definition.Id.TypeId.ToString();
-                match = Regex.Match(typeId + definition.Id.SubtypeName, @"[\[\]\r\n|=]");
+                match = Regex.Match(definition.Id.TypeId.ToString() + definition.Id.SubtypeName, @"[\[\]\r\n|=]");
                 if (match.Success)
                     continue;
 
-                if (config.ContainsSection(typeId))
+                section = definition.Id.TypeId.ToString().Remove(0, 16); //remove "MyObjectBuilder_"
+
+                if (config.ContainsSection(section))
                 {
                     defaultItemConfig.SetDefaultPrices(definition.Id);
-                    config.Set(typeId, definition.Id.SubtypeName, defaultItemConfig.ToString());
+                    config.Set(section, definition.Id.SubtypeName, defaultItemConfig.ToString());
                 }
             }
 
