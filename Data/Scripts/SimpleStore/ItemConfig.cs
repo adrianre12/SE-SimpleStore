@@ -8,16 +8,59 @@ namespace SimpleStore.StoreBlock
 {
     class ItemConfig
     {
+        private static Random rnd = new Random();
         Dictionary<MyDefinitionId, int> ComponentMinimalPrice = new Dictionary<MyDefinitionId, int>();
         Dictionary<MyDefinitionId, int> BlockMinimalPrice = new Dictionary<MyDefinitionId, int>();
         public class StoreItem
         {
             public int Count = 0;
             public int Price = 0;
+            private int min = 0;
+            private int max = 0;
+            private bool isRandom = false;
+
 
             public override string ToString()
             {
-                return $"{Count}:{Price}";
+                string countStr = isRandom ? $"{min}<{max}" : $"{Count}";
+                return $"{countStr}:{Price}";
+            }
+            private bool TryParseValue(string strValue, out int value)
+            {
+                isRandom = false;
+                value = 0;
+                string[] minMax = strValue.Split('<');
+                switch (minMax.Length)
+                {
+                    case 1:
+                        {
+                            if (!int.TryParse(minMax[0], out value))
+                                return false;
+                            if (value < 0) 
+                                return false;
+                            break;
+                        }
+                    case 2:
+                        {
+                            isRandom = true;
+                            if (!int.TryParse(minMax[0], out min))
+                                return false;
+
+                             if (!int.TryParse(minMax[1], out max))
+                                return false;
+                            if (max < min)
+                                return false;
+
+                            value = rnd.Next(min, max + 1);
+                            value = value < 0 ? 0 : value;
+                            break;
+                        }
+                    default:
+                        {
+                            return false;
+                        }
+                }
+                return true;
             }
 
             public bool TryParse(string raw)
@@ -26,7 +69,7 @@ namespace SimpleStore.StoreBlock
                 if (countPrice.Length != 2)
                     return false;
 
-                if (!int.TryParse(countPrice[0], out this.Count))
+                if (!TryParseValue(countPrice[0], out this.Count))
                     return false;
 
                 if (!int.TryParse(countPrice[1], out this.Price))
@@ -54,6 +97,7 @@ namespace SimpleStore.StoreBlock
         public bool TryParse(string raw)
         {
             this.raw = raw;
+            this.removeError = false;
             this.error = true;
             string[] buySell = raw.Split(',');
             if (buySell.Length < 2)
@@ -105,7 +149,7 @@ namespace SimpleStore.StoreBlock
                 CalculatePrefabMinimalPrice(prefab.Id.SubtypeName, 1f, ref minimalPrice);
             }
 
-            this.Buy.Price = Math.Max(minimalPrice,1); // Keen wont allow 0 price
+            this.Buy.Price = Math.Max(minimalPrice, 1); // Keen wont allow 0 price
             this.Sell.Price = Math.Max(minimalPrice, 1);
         }
 
