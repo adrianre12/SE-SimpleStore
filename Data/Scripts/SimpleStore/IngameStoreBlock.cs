@@ -84,7 +84,6 @@ namespace SimpleStore.StoreBlock
 
             UpdateCounter++;
 
-            MyLog.Default.WriteLine($"SimpleStore.StoreBlock: UpdateCounter {UpdateCounter}");
             if (!UpdateShop && UpdateCounter <= refreshCounterLimit)
                 return;
 
