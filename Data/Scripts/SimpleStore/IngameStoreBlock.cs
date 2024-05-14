@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Windows.Input;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.Entity;
@@ -27,8 +28,11 @@ namespace SimpleStore.StoreBlock
         const string ConfigSettings = "Settings";
         const string Resell = "ResellItems";
         const string SpawnDistance = "SpawnDistance";
+        const string RefreshPeriod = "RefreshPeriodMins";
 
         const int DefaultSpawnDistance = 100;
+        const int DefaultRefreshPeriod = 20; //mins
+        const int MinRefreshPeriod = 750;  // 100's of ticks mins * 37.5
 
         List<string> BlacklistItems = new List<string> { "RestrictedConstruction", "CubePlacerItem", "GoodAIRewardPunishmentTool" };
 
@@ -40,6 +44,7 @@ namespace SimpleStore.StoreBlock
         int UpdateCounter = 0;
         bool resellItems = false;
         int spawnDistance = DefaultSpawnDistance;
+        int refreshCounterLimit = DefaultRefreshPeriod;
 
         List<IMyPlayer> Players = new List<IMyPlayer>();
         List<Sandbox.ModAPI.Ingame.MyStoreQueryItem> StoreItems = new List<Sandbox.ModAPI.Ingame.MyStoreQueryItem>();
@@ -79,7 +84,8 @@ namespace SimpleStore.StoreBlock
 
             UpdateCounter++;
 
-            if (!UpdateShop && UpdateCounter <= 750)
+            MyLog.Default.WriteLine($"SimpleStore.StoreBlock: UpdateCounter {UpdateCounter}");
+            if (!UpdateShop && UpdateCounter <= refreshCounterLimit)
                 return;
 
             MyLog.Default.WriteLine("SimpleStore.StoreBlock: Starting to update store");
@@ -237,13 +243,14 @@ namespace SimpleStore.StoreBlock
             var sb = new StringBuilder();
             sb.AppendLine("Do not activate too many objects, the store has a limited number of slots.");
             sb.AppendLine("Auto-generated prices are the Keen minimum, setting lower value will log an error.");
-            sb.AppendLine("To force a store refresh, turn store block off wait 3s and turn it on. Auto update is every 20 minutes");
+            sb.AppendLine("To force a store refresh, turn store block off wait 3s and turn it on. Auto refresh minimum and default is 20 minutes");
             sb.AppendLine("Config errors will cause the store block to turn off");
             sb.AppendLine("Format is BuyAmount:BuyPrice,SellAmount:SellPrice");
             config.SetSectionComment(ConfigSettings, sb.ToString());
 
             config.Set(ConfigSettings, Resell, true);
             config.Set(ConfigSettings, SpawnDistance, DefaultSpawnDistance);
+            config.Set(ConfigSettings, RefreshPeriod, DefaultRefreshPeriod);
 
             config.AddSection("Ore");
             config.AddSection("Ingot");
@@ -295,6 +302,8 @@ namespace SimpleStore.StoreBlock
 
                 resellItems = config.Get(ConfigSettings, Resell).ToBoolean(false);
                 spawnDistance = config.Get(ConfigSettings, SpawnDistance).ToInt32(DefaultSpawnDistance);
+                refreshCounterLimit = Math.Max((int)(config.Get(ConfigSettings, RefreshPeriod).ToInt32(DefaultRefreshPeriod) * 37.5), MinRefreshPeriod);
+                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: RefreshCounterLimit={refreshCounterLimit}");
 
                 List<string> sections = new List<string>();
                 List<MyIniKey> keys = new List<MyIniKey>();
