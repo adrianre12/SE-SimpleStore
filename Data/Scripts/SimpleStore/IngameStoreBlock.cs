@@ -30,7 +30,7 @@ namespace SimpleStore.StoreBlock
 
         const int DefaultSpawnDistance = 100;
 
-        List<string> BlacklistItems = new List<string> { "CubePlacerItem", "GoodAIRewardPunishmentTool" };
+        List<string> BlacklistItems = new List<string> { "RestrictedConstruction", "CubePlacerItem", "GoodAIRewardPunishmentTool" };
 
         IMyStoreBlock myStoreBlock;
         MyIni config = new MyIni();
