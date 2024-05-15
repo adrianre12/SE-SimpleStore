@@ -6,6 +6,7 @@ using Sandbox.ModAPI;
 using System;
 using System.CodeDom;
 using System.Collections.Generic;
+using System.Drawing.Text;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -99,22 +100,24 @@ namespace SimpleStore.StoreBlock
             Match match;
             string rawIniValue;
             ItemConfig itemConfig = new ItemConfig();
+            string subtypeName = "";
 
             foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions())
             {
-                match = Regex.Match(definition.Id.TypeId.ToString() + definition.Id.SubtypeName, @"[\[\]\r\n|=]");
+                subtypeName = FixKey(definition.Id.SubtypeName);
+                match = Regex.Match(definition.Id.TypeId.ToString() + subtypeName, @"[\[\]\r\n|=]");
                 if (match.Success)
                     continue;
 
-                var section = definition.Id.TypeId.ToString().Remove(0, 16);
+                var section = definition.Id.TypeId.ToString().Remove(0, 16); //remove "MyObjectBuilder_"
 
                 var currentInvItemAmount = MyVisualScriptLogicProvider.GetEntityInventoryItemAmount(myStoreBlock.Name, definition.Id);
                 MyVisualScriptLogicProvider.RemoveFromEntityInventory(myStoreBlock.Name, definition.Id, currentInvItemAmount);
 
-                if (!config.ContainsSection(section) || !config.ContainsKey(section, definition.Id.SubtypeName))
+                if (!config.ContainsSection(section) || !config.ContainsKey(section, subtypeName))
                     continue;
 
-                if (!config.Get(section, definition.Id.SubtypeName).TryGetString(out rawIniValue))
+                if (!config.Get(section, subtypeName).TryGetString(out rawIniValue))
                     continue;
 
                 if (!itemConfig.TryParse(rawIniValue))
@@ -234,6 +237,10 @@ namespace SimpleStore.StoreBlock
             }
         }
 
+        private string FixKey(string key)
+        {
+            return key.Replace('[', '{').Replace(']', '}'); // Replace [ ]  with { } for mods like Better Stone
+        }
 
         private void CreateConfig()
         {
@@ -264,13 +271,14 @@ namespace SimpleStore.StoreBlock
             Match match;
 
             ItemConfig defaultItemConfig = new ItemConfig();
+            string subtypeName = "";
 
             foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions())
             {
                 if (BlacklistItems.Contains(definition.Id.SubtypeName))
                     continue;
-
-                match = Regex.Match(definition.Id.TypeId.ToString() + definition.Id.SubtypeName, @"[\[\]\r\n|=]");
+                subtypeName = FixKey(definition.Id.SubtypeName);
+                match = Regex.Match(definition.Id.TypeId.ToString() + subtypeName, @"[\[\]\r\n|=]");
                 if (match.Success)
                     continue;
 
@@ -279,7 +287,7 @@ namespace SimpleStore.StoreBlock
                 if (config.ContainsSection(section))
                 {
                     defaultItemConfig.SetDefaultPrices(definition.Id);
-                    config.Set(section, definition.Id.SubtypeName, defaultItemConfig.ToString());
+                    config.Set(section, subtypeName, defaultItemConfig.ToString());
                 }
             }
 
@@ -292,7 +300,7 @@ namespace SimpleStore.StoreBlock
             MyLog.Default.WriteLine("SimpleStore.StoreBlock: Start TryLoadConfig");
 
             bool configOK = true;
-            bool updateConfig = false;
+            bool storeConfig = false;
 
             if (config.TryParse(myStoreBlock.CustomData))
             {
@@ -329,21 +337,19 @@ namespace SimpleStore.StoreBlock
                         if (!itemConfig.TryParse(rawIniValue))
                         {
                             config.Set(section, key.Name, itemConfig.ToString());
-                            updateConfig = true;
-                            myStoreBlock.Enabled = false;
-
+                            storeConfig = true;
                             continue;
                         }
 
                         if (itemConfig.IsRemoveError())
                         {
                             config.Set(section, key.Name, itemConfig.ToString());
-                            updateConfig = true;
+                            storeConfig = true;
                         }
                     }
                 }
 
-                if (updateConfig)
+                if (storeConfig)
                 {
                     config.Invalidate();
                     myStoreBlock.CustomData = config.ToString();
@@ -352,6 +358,7 @@ namespace SimpleStore.StoreBlock
                 if (!configOK)
                 {
                     MyLog.Default.WriteLine("SimpleStore.StoreBlock: Config Value error");
+                    myStoreBlock.Enabled = false;
                 }
 
             }
@@ -359,6 +366,7 @@ namespace SimpleStore.StoreBlock
             {
                 configOK = false;
                 MyLog.Default.WriteLine("SimpleStore.StoreBlock: Config Syntax error");
+                myStoreBlock.Enabled = false;
             }
             return configOK;
         }

@@ -14,4 +14,8 @@
 		<PackageReference Include="Mal.Mdk2.References" Version="*" />
 	</ItemGroup>
 
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+	  <Exec Command="PostBuild.cmd" />
+	</Target>
+
 </Project>
