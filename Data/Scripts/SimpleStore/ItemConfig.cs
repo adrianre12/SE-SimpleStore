@@ -18,17 +18,43 @@ namespace SimpleStore.StoreBlock
             private int min = 0;
             private int max = 0;
             private bool isRandom = false;
+            private int percent = 100;
+            private bool isPercent = false;
 
 
             public override string ToString()
             {
-                string countStr = isRandom ? $"{min}<{max}" : $"{Count}";
+                string countStr = $"{Count}";
+                if (isRandom)
+                    countStr = $"{min}<{max}";
+                if (isPercent)
+                    countStr = $"{percent}%{countStr}";
+
                 return $"{countStr}:{Price}";
             }
             private bool TryParseValue(string strValue, out int value)
             {
                 isRandom = false;
+                isPercent = false;
                 value = 0;
+                string[] percentValue = strValue.Split('%');
+                switch (percentValue.Length)
+                {
+                    case 1:
+                        {
+                            break;
+                        }
+                    case 2:
+                        {
+                            isPercent = true;
+                            strValue = percentValue[1];
+                            if (!int.TryParse(percentValue[0], out percent))
+                                return false;
+                            percent = Math.Max(Math.Min(percent, 100), 0);
+                            break;
+                        }
+                }
+
                 string[] minMax = strValue.Split('<');
                 switch (minMax.Length)
                 {
@@ -36,7 +62,7 @@ namespace SimpleStore.StoreBlock
                         {
                             if (!int.TryParse(minMax[0], out value))
                                 return false;
-                            if (value < 0) 
+                            if (value < 0)
                                 return false;
                             break;
                         }
@@ -46,7 +72,7 @@ namespace SimpleStore.StoreBlock
                             if (!int.TryParse(minMax[0], out min))
                                 return false;
 
-                             if (!int.TryParse(minMax[1], out max))
+                            if (!int.TryParse(minMax[1], out max))
                                 return false;
                             if (max < min)
                                 return false;
@@ -60,6 +86,13 @@ namespace SimpleStore.StoreBlock
                             return false;
                         }
                 }
+
+                if (isPercent)
+                {
+                    if (rnd.Next(1, 101) > percent)
+                        value = 0;
+                }
+
                 return true;
             }
 
