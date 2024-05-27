@@ -13,7 +13,13 @@ namespace SimpleStore.StoreBlock
         Dictionary<MyDefinitionId, int> BlockMinimalPrice = new Dictionary<MyDefinitionId, int>();
         public class StoreItem
         {
-            public int Count = 0;
+            private int count = 0;
+            public int Count
+            {
+                get { return CalculateCount(); }
+                set { count = value; }
+            }
+
             public int Price = 0;
             private int min = 0;
             private int max = 0;
@@ -21,6 +27,25 @@ namespace SimpleStore.StoreBlock
             private int percent = 100;
             private bool isPercent = false;
 
+            private int CalculateCount()
+            {
+                int value = count;
+
+                if (isRandom)
+                {
+                    value = rnd.Next(min, max + 1);
+                    value = value < 0 ? 0 : value;
+                }
+
+
+                if (isPercent)
+                {
+                    if (rnd.Next(1, 101) > percent)
+                        value = 0;
+                }
+
+                return value;
+            }
 
             public override string ToString()
             {
@@ -32,11 +57,12 @@ namespace SimpleStore.StoreBlock
 
                 return $"{countStr}:{Price}";
             }
-            private bool TryParseValue(string strValue, out int value)
+            private bool TryParseCount(string strValue)
             {
+                this.count = 0;
                 isRandom = false;
                 isPercent = false;
-                value = 0;
+
                 string[] percentValue = strValue.Split('%');
                 switch (percentValue.Length)
                 {
@@ -60,9 +86,9 @@ namespace SimpleStore.StoreBlock
                 {
                     case 1:
                         {
-                            if (!int.TryParse(minMax[0], out value))
+                            if (!int.TryParse(minMax[0], out this.count))
                                 return false;
-                            if (value < 0)
+                            if (this.count < 0)
                                 return false;
                             break;
                         }
@@ -77,8 +103,6 @@ namespace SimpleStore.StoreBlock
                             if (max < min)
                                 return false;
 
-                            value = rnd.Next(min, max + 1);
-                            value = value < 0 ? 0 : value;
                             break;
                         }
                     default:
@@ -87,11 +111,6 @@ namespace SimpleStore.StoreBlock
                         }
                 }
 
-                if (isPercent)
-                {
-                    if (rnd.Next(1, 101) > percent)
-                        value = 0;
-                }
 
                 return true;
             }
@@ -102,7 +121,7 @@ namespace SimpleStore.StoreBlock
                 if (countPrice.Length != 2)
                     return false;
 
-                if (!TryParseValue(countPrice[0], out this.Count))
+                if (!TryParseCount(countPrice[0]))
                     return false;
 
                 if (!int.TryParse(countPrice[1], out this.Price))
