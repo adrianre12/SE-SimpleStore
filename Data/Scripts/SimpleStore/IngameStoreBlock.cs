@@ -108,9 +108,6 @@ namespace SimpleStore.StoreBlock
 
                 var section = definition.Id.TypeId.ToString().Remove(0, 16); //remove "MyObjectBuilder_"
 
-                var currentInvItemAmount = MyVisualScriptLogicProvider.GetEntityInventoryItemAmount(myStoreBlock.Name, definition.Id);
-                MyVisualScriptLogicProvider.RemoveFromEntityInventory(myStoreBlock.Name, definition.Id, currentInvItemAmount);
-
                 if (!config.ContainsSection(section) || !config.ContainsKey(section, subtypeName))
                     continue;
 
@@ -124,6 +121,12 @@ namespace SimpleStore.StoreBlock
 
                     continue;
                 }
+
+                var currentInvItemAmount = MyVisualScriptLogicProvider.GetEntityInventoryItemAmount(myStoreBlock.Name, definition.Id);
+                MyVisualScriptLogicProvider.RemoveFromEntityInventory(myStoreBlock.Name, definition.Id, currentInvItemAmount);
+                itemConfig.Buy.SetResellCount(currentInvItemAmount);
+                if (resellItems)
+                    itemConfig.Buy.SetAutoResell();
 
                 var prefab = MyDefinitionManager.Static.GetPrefabDefinition(definition.Id.SubtypeName);
 
@@ -145,14 +148,14 @@ namespace SimpleStore.StoreBlock
                 //buy
                 if (itemConfig.Buy.Count > 0)
                 {
-                    int sellCount = resellItems ? Math.Max(itemConfig.Buy.Count, currentInvItemAmount) : itemConfig.Buy.Count;
-                    itemData = new MyStoreItemData(definition.Id, sellCount, itemConfig.Buy.Price,
+                    int buyCount = itemConfig.Buy.Count;
+                    itemData = new MyStoreItemData(definition.Id, buyCount, itemConfig.Buy.Price,
                         (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransaction(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
                     MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOffer {definition.Id.SubtypeName}");
                     result = myStoreBlock.InsertOffer(itemData, out id);
 
                     if (result == Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
-                        MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, definition.Id, sellCount);
+                        MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, definition.Id, buyCount);
                     else
                         MyLog.Default.WriteLine("SimpleStore.StoreBlock: Buy result " + result);
 
@@ -244,14 +247,14 @@ namespace SimpleStore.StoreBlock
             config.Clear();
             config.AddSection(ConfigSettings);
             var sb = new StringBuilder();
-            sb.AppendLine("Do not activate too many objects, the store has a limited number of slots.");
+            sb.AppendLine("Do not activate too many items, the store has a total of 30 slots.");
             sb.AppendLine("Auto-generated prices are the Keen minimum, setting lower value will log an error.");
             sb.AppendLine("To force a store refresh, turn store block off wait 3s and turn it on. Auto refresh minimum and default is 20 minutes");
             sb.AppendLine("Config errors will cause the store block to turn off");
             sb.AppendLine("Format is BuyAmount:BuyPrice,SellAmount:SellPrice");
             config.SetSectionComment(ConfigSettings, sb.ToString());
 
-            config.Set(ConfigSettings, Resell, true);
+            config.Set(ConfigSettings, Resell, false);
             config.Set(ConfigSettings, SpawnDistance, DefaultSpawnDistance);
             config.Set(ConfigSettings, RefreshPeriod, DefaultRefreshPeriod);
 

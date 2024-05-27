@@ -26,17 +26,37 @@ namespace SimpleStore.StoreBlock
             private bool isRandom = false;
             private int percent = 100;
             private bool isPercent = false;
+            private bool isAutoResell = false;
+            private int resellCount = 0;
+
+            public void SetAutoResell()
+            {
+                isAutoResell = true;
+            }
+
+            public void SetResellCount(int value)
+            {
+                resellCount = value;
+            }
 
             private int CalculateCount()
             {
                 int value = count;
+                if (isAutoResell)
+                {
+                    value = Math.Max(count, resellCount);
+                }
 
                 if (isRandom)
                 {
-                    value = rnd.Next(min, max + 1);
+                    int maxValue = max;
+                    if (isAutoResell)
+                    {
+                        maxValue = Math.Max(max, resellCount);
+                    }
+                    value = rnd.Next(min, maxValue + 1);
                     value = value < 0 ? 0 : value;
                 }
-
 
                 if (isPercent)
                 {
@@ -50,8 +70,12 @@ namespace SimpleStore.StoreBlock
             public override string ToString()
             {
                 string countStr = $"{Count}";
+                if (isAutoResell)
+                    countStr = "A";
                 if (isRandom)
                     countStr = $"{min}<{max}";
+                if (isRandom && isAutoResell)
+                    countStr = $"{min}<A";
                 if (isPercent)
                     countStr = $"{percent}%{countStr}";
 
@@ -62,6 +86,9 @@ namespace SimpleStore.StoreBlock
                 this.count = 0;
                 isRandom = false;
                 isPercent = false;
+                isAutoResell = false;
+                resellCount = 0;
+                max = 0;
 
                 string[] percentValue = strValue.Split('%');
                 switch (percentValue.Length)
@@ -86,6 +113,11 @@ namespace SimpleStore.StoreBlock
                 {
                     case 1:
                         {
+                            if (minMax[0].ToUpper() == "A")
+                            {
+                                isAutoResell = true;
+                                break;
+                            }
                             if (!int.TryParse(minMax[0], out this.count))
                                 return false;
                             if (this.count < 0)
@@ -97,6 +129,12 @@ namespace SimpleStore.StoreBlock
                             isRandom = true;
                             if (!int.TryParse(minMax[0], out min))
                                 return false;
+
+                            if (minMax[1].ToUpper() == "A")
+                            {
+                                isAutoResell = true;
+                                break;
+                            }
 
                             if (!int.TryParse(minMax[1], out max))
                                 return false;
