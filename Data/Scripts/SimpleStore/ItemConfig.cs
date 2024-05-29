@@ -3,6 +3,7 @@ using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
 using VRage.Game;
+using VRage.Utils;
 
 namespace SimpleStore.StoreBlock
 {
@@ -266,7 +267,15 @@ namespace SimpleStore.StoreBlock
             foreach (MyBlueprintDefinitionBase.Item item in myBlueprintDefinitionBase.Prerequisites)
             {
                 int num3 = 0;
-                this.CalculateItemMinimalPrice(item.Id, baseCostProductionSpeedMultiplier, ref num3);
+                if (item.Id != itemId)
+                {
+                    this.CalculateItemMinimalPrice(item.Id, baseCostProductionSpeedMultiplier, ref num3);
+                }
+                else
+                {
+                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Warning: Recursive Prerequisite {item.Id.SubtypeName} using 0 price");
+                }
+
                 float num4 = (float)item.Amount / num;
                 num2 += (int)((float)num3 * num4);
             }

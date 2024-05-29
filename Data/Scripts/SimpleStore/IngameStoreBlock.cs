@@ -244,6 +244,8 @@ namespace SimpleStore.StoreBlock
 
         private void CreateConfig()
         {
+            MyLog.Default.WriteLine("SimpleStore.StoreBlock: Start CreateConfig");
+
             config.Clear();
             config.AddSection(ConfigSettings);
             var sb = new StringBuilder();
