@@ -266,9 +266,9 @@ namespace SimpleStore.StoreBlock
 
             config.AddSection("Ore");
             config.AddSection("Ingot");
+            config.AddSection("Component");
             config.AddSection("PhysicalGunObject");
             config.AddSection("AmmoMagazine");
-            config.AddSection("Component");
             config.AddSection("OxygenContainerObject");
             config.AddSection("GasContainerObject");
             config.AddSection("ConsumableItem");
@@ -298,7 +298,7 @@ namespace SimpleStore.StoreBlock
             }
 
             config.Invalidate();
-            myStoreBlock.CustomData = config.ToString();
+            myStoreBlock.CustomData = config.ToStringSorted();
         }
 
         private bool TryLoadConfig()
