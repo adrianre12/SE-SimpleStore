@@ -82,14 +82,14 @@ namespace SimpleStore.StoreBlock
 
                 return $"{countStr}:{Price}";
             }
-            private bool TryParseCount(string strValue)
+            private bool TryParseCount(string strValue, bool isSell)
             {
                 this.count = 0;
-                isRandom = false;
-                isPercent = false;
-                isAutoResell = false;
-                resellCount = 0;
-                max = 0;
+                this.isRandom = false;
+                this.isPercent = false;
+                this.isAutoResell = false;
+                this.resellCount = 0;
+                this.max = 0;
 
                 string[] percentValue = strValue.Split('%');
                 switch (percentValue.Length)
@@ -116,6 +116,9 @@ namespace SimpleStore.StoreBlock
                         {
                             if (minMax[0].ToUpper() == "A")
                             {
+                                if (isSell)
+                                    return false;
+
                                 isAutoResell = true;
                                 break;
                             }
@@ -133,6 +136,9 @@ namespace SimpleStore.StoreBlock
 
                             if (minMax[1].ToUpper() == "A")
                             {
+                                if (isSell)
+                                    return false;
+
                                 isAutoResell = true;
                                 break;
                             }
@@ -154,13 +160,13 @@ namespace SimpleStore.StoreBlock
                 return true;
             }
 
-            public bool TryParse(string raw)
+            public bool TryParse(string raw, bool isSell)
             {
                 string[] countPrice = raw.Split(':');
                 if (countPrice.Length != 2)
                     return false;
 
-                if (!TryParseCount(countPrice[0]))
+                if (!TryParseCount(countPrice[0], isSell))
                     return false;
 
                 if (!int.TryParse(countPrice[1], out this.Price))
@@ -194,10 +200,10 @@ namespace SimpleStore.StoreBlock
             if (buySell.Length < 2)
                 return false;
 
-            if (!this.Buy.TryParse(buySell[0]))
+            if (!this.Buy.TryParse(buySell[0], false))
                 return false;
 
-            if (!this.Sell.TryParse(buySell[1]))
+            if (!this.Sell.TryParse(buySell[1], true))
                 return false;
 
             if (buySell.Length > 2 && buySell[2].Contains(errString))

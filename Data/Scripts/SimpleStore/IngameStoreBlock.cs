@@ -136,13 +136,14 @@ namespace SimpleStore.StoreBlock
                 MyStoreItemData itemData;
 
                 //sell from the players point of view
-                if (prefab == null && itemConfig.Sell.Count > 0)
+                int sellCount = itemConfig.Sell.Count;
+                if (prefab == null && sellCount > 0)
                 {
-                    itemData = new MyStoreItemData(definition.Id, itemConfig.Sell.Count, itemConfig.Sell.Price, null, null);
-                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOrder {definition.Id.SubtypeName}");
+                    itemData = new MyStoreItemData(definition.Id, sellCount, itemConfig.Sell.Price, null, null);
+                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOrder {definition.Id.SubtypeName}  Count={sellCount} Price={itemConfig.Sell.Price}");
                     result = myStoreBlock.InsertOrder(itemData, out id);
                     if (result != Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
-                        MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Sell result {definition.Id.SubtypeName} Count={itemConfig.Sell.Count} Price={itemConfig.Sell.Price} : {result}");
+                        MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Sell result {definition.Id.SubtypeName}: {result}");
                 }
 
                 //buy
@@ -151,13 +152,13 @@ namespace SimpleStore.StoreBlock
                 {
                     itemData = new MyStoreItemData(definition.Id, buyCount, itemConfig.Buy.Price,
                         (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransaction(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
-                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOffer {definition.Id.SubtypeName}");
+                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOffer {definition.Id.SubtypeName} Count={buyCount} Price={itemConfig.Buy.Price}");
                     result = myStoreBlock.InsertOffer(itemData, out id);
 
                     if (result == Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
                         MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, definition.Id, buyCount);
                     else
-                        MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Buy result {definition.Id.SubtypeName} Count={buyCount} Price={itemConfig.Buy.Price} : {result}");
+                        MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Buy result {definition.Id.SubtypeName}: {result}");
 
                 }
             }
