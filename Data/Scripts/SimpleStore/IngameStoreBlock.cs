@@ -142,7 +142,7 @@ namespace SimpleStore.StoreBlock
                     MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOrder {definition.Id.SubtypeName}");
                     result = myStoreBlock.InsertOrder(itemData, out id);
                     if (result != Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
-                        MyLog.Default.WriteLine("SimpleStore.StoreBlock: Sell result " + result);
+                        MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Sell result {definition.Id.SubtypeName}: {result}");
                 }
 
                 //buy
@@ -157,7 +157,7 @@ namespace SimpleStore.StoreBlock
                     if (result == Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
                         MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, definition.Id, buyCount);
                     else
-                        MyLog.Default.WriteLine("SimpleStore.StoreBlock: Buy result " + result);
+                        MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Buy result {definition.Id.SubtypeName}: {result}");
 
                 }
             }
