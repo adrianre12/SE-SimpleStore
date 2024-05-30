@@ -71,6 +71,9 @@ namespace SimpleStore.StoreBlock
             {
                 lastBlockEnabledState = myStoreBlock.Enabled;
 
+                if (myStoreBlock.Enabled == false)
+                    return;
+
                 if (!TryLoadConfig())
                     return;
 
