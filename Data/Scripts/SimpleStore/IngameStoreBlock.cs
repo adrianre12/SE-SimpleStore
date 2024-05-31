@@ -33,6 +33,7 @@ namespace SimpleStore.StoreBlock
         const int MinRefreshPeriod = 750;  // 100's of ticks mins * 37.5
 
         List<string> BlacklistItems = new List<string> { "RestrictedConstruction", "CubePlacerItem", "GoodAIRewardPunishmentTool" };
+        List<MyDefinitionId> AutoRefineList = new List<MyDefinitionId>();
 
         IMyStoreBlock myStoreBlock;
         MyIni config = new MyIni();
@@ -56,7 +57,9 @@ namespace SimpleStore.StoreBlock
             if (!MyAPIGateway.Session.IsServer)
                 return;
 
-            MyLog.Default.WriteLine("SimpleStore.StoreBlock: loaded...");
+            MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Ores loaded ({RefineOre.OresLoaded()})");
+
+            MyLog.Default.WriteLine("SimpleStore.StoreBlock: Loaded...");
         }
 
         public override void UpdateAfterSimulation100()
@@ -101,6 +104,7 @@ namespace SimpleStore.StoreBlock
             string rawIniValue;
             ItemConfig itemConfig = new ItemConfig();
             string subtypeName = "";
+            AutoRefineList.Clear();
 
             foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions())
             {
@@ -142,11 +146,17 @@ namespace SimpleStore.StoreBlock
                 int sellCount = itemConfig.Sell.Count;
                 if (prefab == null && sellCount > 0)
                 {
-                    itemData = new MyStoreItemData(definition.Id, sellCount, itemConfig.Sell.Price, null, null);
+                    itemData = new MyStoreItemData(definition.Id, sellCount, itemConfig.Sell.Price,
+                        (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransactionSell(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
                     MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOrder {definition.Id.SubtypeName}  Count={sellCount} Price={itemConfig.Sell.Price}");
                     result = myStoreBlock.InsertOrder(itemData, out id);
                     if (result != Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
                         MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Sell result {definition.Id.SubtypeName}: {result}");
+                    if (itemConfig.Sell.IsAutoRefine)
+                    {
+                        MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Sell AutoRefine {definition.Id.SubtypeName}");
+                        AutoRefineList.Add(definition.Id);
+                    }
                 }
 
                 //buy
@@ -154,7 +164,7 @@ namespace SimpleStore.StoreBlock
                 if (buyCount > 0)
                 {
                     itemData = new MyStoreItemData(definition.Id, buyCount, itemConfig.Buy.Price,
-                        (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransaction(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
+                        (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransactionBuy(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
                     MyLog.Default.WriteLine($"SimpleStore.StoreBlock: InsertOffer {definition.Id.SubtypeName} Count={buyCount} Price={itemConfig.Buy.Price}");
                     result = myStoreBlock.InsertOffer(itemData, out id);
 
@@ -170,7 +180,36 @@ namespace SimpleStore.StoreBlock
             UpdateShop = false;
         }
 
-        private void OnTransaction(int amountSold, int amountRemaining, long priceOfTransaction, long ownerOfBlock, long buyerSeller, MyDefinitionBase compDef)
+        private void OnTransactionSell(int amountSold, int amountRemaining, long priceOfTransaction, long ownerOfBlock, long buyerSeller, MyDefinitionBase compDef)
+        {
+            //MyLog.Default.WriteLine($"SimpleStore.StoreBlock: OnTransactionSell {compDef.Id.TypeId} {compDef.Id.SubtypeName}");
+            MyAPIGateway.Multiplayer.Players.RequestChangeBalance(ownerOfBlock, priceOfTransaction);
+
+            if (!AutoRefineList.Contains(compDef.Id))
+                return;
+
+            MyBlueprintDefinitionBase.Item[] ingots;
+            int amount;
+            if (RefineOre.TryGetIngots(compDef.Id.SubtypeName, out amount, out ingots))
+            {
+                int refineN = amountSold / amount;
+                MyVisualScriptLogicProvider.RemoveFromEntityInventory(myStoreBlock.Name, compDef.Id, refineN * amount);
+
+                foreach (var ingot in ingots)
+                {
+                    int amountRefined = (int)(refineN * ((float)ingot.Amount));
+
+                    MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, ingot.Id, amountRefined);
+                    //MyLog.Default.WriteLine($"SimpleStore.StoreBlock: OnTransactionSell added {amountRefined} {ingot.Id.SubtypeName}");
+                }
+            }
+            else
+            {
+                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: OnTransactionSell TryGetIngots failed {compDef.Id.SubtypeName}");
+            }
+        }
+
+        private void OnTransactionBuy(int amountSold, int amountRemaining, long priceOfTransaction, long ownerOfBlock, long buyerSeller, MyDefinitionBase compDef)
         {
             var prefab = MyDefinitionManager.Static.GetPrefabDefinition(compDef.Id.SubtypeName);
 

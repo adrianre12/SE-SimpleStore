@@ -29,6 +29,7 @@ namespace SimpleStore.StoreBlock
             private bool isPercent = false;
             private bool isAutoResell = false;
             private int resellCount = 0;
+            public bool IsAutoRefine { get; private set; } = false;
 
             public void SetAutoResell()
             {
@@ -90,6 +91,7 @@ namespace SimpleStore.StoreBlock
                 this.isAutoResell = false;
                 this.resellCount = 0;
                 this.max = 0;
+                this.IsAutoRefine = false;
 
                 string[] percentValue = strValue.Split('%');
                 switch (percentValue.Length)
@@ -122,10 +124,21 @@ namespace SimpleStore.StoreBlock
                                 isAutoResell = true;
                                 break;
                             }
-                            if (!int.TryParse(minMax[0], out this.count))
+                            string[] maxR = minMax[0].ToUpper().Split('R');
+
+                            if (!int.TryParse(maxR[0], out this.count))
                                 return false;
                             if (this.count < 0)
                                 return false;
+
+                            if (maxR.Length < 2)
+                                break;
+
+                            if (!isSell)
+                                return false;
+
+                            IsAutoRefine = true;
+
                             break;
                         }
                     case 2:
@@ -143,11 +156,20 @@ namespace SimpleStore.StoreBlock
                                 break;
                             }
 
-                            if (!int.TryParse(minMax[1], out max))
+                            string[] maxR = minMax[1].ToUpper().Split('R');
+
+                            if (!int.TryParse(maxR[1], out max))
                                 return false;
                             if (max < min)
                                 return false;
 
+                            if (maxR.Length < 2)
+                                break;
+
+                            if (!isSell)
+                                return false;
+
+                            IsAutoRefine = true;
                             break;
                         }
                     default:
