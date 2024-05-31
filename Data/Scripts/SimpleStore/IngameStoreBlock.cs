@@ -198,7 +198,6 @@ namespace SimpleStore.StoreBlock
                 foreach (var ingot in ingots)
                 {
                     int amountRefined = (int)(refineN * ((float)ingot.Amount));
-
                     MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, ingot.Id, amountRefined);
                     //MyLog.Default.WriteLine($"SimpleStore.StoreBlock: OnTransactionSell added {amountRefined} {ingot.Id.SubtypeName}");
                 }

@@ -158,7 +158,7 @@ namespace SimpleStore.StoreBlock
 
                             string[] maxR = minMax[1].ToUpper().Split('R');
 
-                            if (!int.TryParse(maxR[1], out max))
+                            if (!int.TryParse(maxR[0], out max))
                                 return false;
                             if (max < min)
                                 return false;
