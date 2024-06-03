@@ -41,6 +41,8 @@ namespace SimpleStore.StoreBlock
         IMyStoreBlock myStoreBlock;
         MyIni config = new MyIni();
 
+        private static Random rnd = new Random();
+
         bool lastBlockEnabledState = false;
         bool UpdateShop = true;
         int UpdateCounter = 0;
@@ -184,6 +186,11 @@ namespace SimpleStore.StoreBlock
             }
 
             UpdateCounter = 0;
+            if (UpdateShop)
+            {
+                UpdateCounter = rnd.Next((int)(refreshCounterLimit - MinRefreshPeriod * 0.2)); // stop them all refreshing at the same time.
+                MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: UpdateCounter={UpdateCounter}");
+            }
             UpdateShop = false;
         }
 
@@ -355,7 +362,7 @@ namespace SimpleStore.StoreBlock
 
         private bool TryLoadConfig()
         {
-            MyLog.Default.WriteLineIf(debugLog, "SimpleStore.StoreBlock: Start TryLoadConfig");
+            MyLog.Default.WriteLine("SimpleStore.StoreBlock: Loading Config");
 
             bool configOK = true;
             bool storeConfig = false;
