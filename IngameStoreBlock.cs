@@ -35,7 +35,7 @@ namespace SimpleStore.StoreBlock
         const int MinRefreshPeriod = 375;  // 100's of ticks mins * 37.5
         const float DefaultRefineYield = 1;
 
-        List<string> BlacklistItems = new List<string> { "RestrictedConstruction", "CubePlacerItem", "GoodAIRewardPunishmentTool" };
+        List<string> BlacklistItems = new List<string> { "RestrictedConstruction", "CubePlacerItem", "GoodAIRewardPunishmentTool", "SpaceCredit" };
         List<MyDefinitionId> AutoRefineList = new List<MyDefinitionId>();
 
         IMyStoreBlock myStoreBlock;
@@ -331,6 +331,7 @@ namespace SimpleStore.StoreBlock
             config.AddSection("OxygenContainerObject");
             config.AddSection("GasContainerObject");
             config.AddSection("ConsumableItem");
+            config.AddSection("PhysicalObject");
 
             string section;
             Match match;
