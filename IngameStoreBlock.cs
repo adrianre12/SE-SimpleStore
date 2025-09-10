@@ -35,11 +35,13 @@ namespace SimpleStore.StoreBlock
         const int MinRefreshPeriod = 375;  // 100's of ticks mins * 37.5
         const float DefaultRefineYield = 1;
 
-        List<string> BlacklistItems = new List<string> { "RestrictedConstruction", "CubePlacerItem", "GoodAIRewardPunishmentTool", "SpaceCredit" };
-        List<MyDefinitionId> AutoRefineList = new List<MyDefinitionId>();
+        private List<string> BlacklistItems = new List<string> { "RestrictedConstruction", "CubePlacerItem", "GoodAIRewardPunishmentTool", "SpaceCredit" };
+        private List<string> WhitelistItems = new List<string> { "NATO_5p56x45mm", "Organic", "Scrap" };
 
-        IMyStoreBlock myStoreBlock;
-        MyIni config = new MyIni();
+        private List<MyDefinitionId> AutoRefineList = new List<MyDefinitionId>();
+
+        internal IMyStoreBlock myStoreBlock;
+        private MyIni config = new MyIni();
 
         private static Random rnd = new Random();
 
@@ -338,11 +340,12 @@ namespace SimpleStore.StoreBlock
 
             ItemConfig defaultItemConfig = new ItemConfig();
             string subtypeName = "";
-
+            bool ok;
             foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions())
             {
                 if (BlacklistItems.Contains(definition.Id.SubtypeName))
                     continue;
+
                 subtypeName = FixKey(definition.Id.SubtypeName);
                 match = Regex.Match(definition.Id.TypeId.ToString() + subtypeName, @"[\[\]\r\n|=]");
                 if (match.Success)
@@ -352,8 +355,22 @@ namespace SimpleStore.StoreBlock
 
                 if (config.ContainsSection(section))
                 {
-                    defaultItemConfig.SetDefaultPrices(definition.Id);
-                    config.Set(section, subtypeName, defaultItemConfig.ToString());
+                    ok = false;
+                    if (!definition.Public && MyDefinitionManager.Static.GetPrefabDefinition(definition.Id.SubtypeName) != null)
+                    {
+                        ok = true;
+                    }
+                    if (WhitelistItems.Contains(definition.Id.SubtypeName) || (definition.Public && MyDefinitionManager.Static.GetPhysicalItemDefinition(definition.Id).CanPlayerOrder))
+                    {
+                        ok = true;
+                    }
+                    if (ok)
+                    {
+                        defaultItemConfig.SetDefaultPrices(definition.Id);
+                        config.Set(section, subtypeName, defaultItemConfig.ToString());
+                        continue;
+                    }
+                    MyLog.Default.WriteLine($"skipping {subtypeName} public={definition.Public}");
                 }
             }
 
