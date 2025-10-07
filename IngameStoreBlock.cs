@@ -10,6 +10,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using VRage.Game;
 using VRage.Game.Components;
+using VRage.Game.Definitions.SessionComponents;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.Game.ModAPI.Ingame.Utilities;
@@ -53,13 +54,14 @@ namespace SimpleStore.StoreBlock
         int refreshCounterLimit = DefaultRefreshPeriod;
         float refineYield = DefaultRefineYield;
         bool debugLog = false;
+        float transactionFee = 0.02f;
 
         List<IMyPlayer> Players = new List<IMyPlayer>();
         List<Sandbox.ModAPI.Ingame.MyStoreQueryItem> StoreItems = new List<Sandbox.ModAPI.Ingame.MyStoreQueryItem>();
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
-            NeedsUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
+            NeedsUpdate = MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
 
             myStoreBlock = Entity as IMyStoreBlock;
 
@@ -71,6 +73,37 @@ namespace SimpleStore.StoreBlock
             MyLog.Default.WriteLine("SimpleStore.StoreBlock: Loaded...");
         }
 
+        public override void UpdateOnceBeforeFrame()
+        {
+            base.UpdateOnceBeforeFrame();
+            NeedsUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
+            if (!MyAPIGateway.Session.IsServer)
+                return;
+
+            var x = MyDefinitionManager.Static.GetDefinition<MySessionComponentEconomyDefinition>("Default");
+            if (x != null)
+            {
+                transactionFee = x.TransactionFee;
+                //MyLog.Default.WriteLine($"SimpleStore.StoreBlock: TransactionFee loaded ({transactionFee})");
+            }
+
+            Players.Clear();
+            MyAPIGateway.Multiplayer.Players.GetPlayers(Players);
+
+            IMyPlayer player = Players.FirstOrDefault(_player => _player.IdentityId == myStoreBlock.OwnerId);
+
+            if (player == null && myStoreBlock.OwnerId > 0) // it is not a player so must be owned by an npc
+            {
+                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Not owned by player, adjusting Account ballance");
+
+                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
+                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
+                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-50 * 1000 * 1000000);
+
+                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)100 * 1000 * 1000000);
+            }
+
+        }
         public override void UpdateAfterSimulation100()
         {
             if (myStoreBlock.CustomData == "")
@@ -228,7 +261,7 @@ namespace SimpleStore.StoreBlock
         {
             MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: OnTransactionBuy {compDef.Id.TypeId} {compDef.Id.SubtypeName}");
 
-            MyAPIGateway.Multiplayer.Players.RequestChangeBalance(ownerOfBlock, -priceOfTransaction);
+            MyAPIGateway.Multiplayer.Players.RequestChangeBalance(ownerOfBlock, (long)(-priceOfTransaction * (1 - transactionFee)));
 
             var prefab = MyDefinitionManager.Static.GetPrefabDefinition(compDef.Id.SubtypeName);
 
