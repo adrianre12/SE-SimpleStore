@@ -86,24 +86,8 @@ namespace SimpleStore.StoreBlock
                 transactionFee = x.TransactionFee;
                 //MyLog.Default.WriteLine($"SimpleStore.StoreBlock: TransactionFee loaded ({transactionFee})");
             }
-
-            Players.Clear();
-            MyAPIGateway.Multiplayer.Players.GetPlayers(Players);
-
-            IMyPlayer player = Players.FirstOrDefault(_player => _player.IdentityId == myStoreBlock.OwnerId);
-
-            if (player == null && myStoreBlock.OwnerId > 0) // it is not a player so must be owned by an npc
-            {
-                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Not owned by player, adjusting Account ballance");
-
-                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
-                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
-                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-50 * 1000 * 1000000);
-
-                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)100 * 1000 * 1000000);
-            }
-
         }
+
         public override void UpdateAfterSimulation100()
         {
             if (myStoreBlock.CustomData == "")
@@ -134,6 +118,8 @@ namespace SimpleStore.StoreBlock
                 return;
 
             MyLog.Default.WriteLine("SimpleStore.StoreBlock: Starting to update store");
+
+            ResetNPCAccountBallance();
 
             myStoreBlock.GetPlayerStoreItems(StoreItems);
 
@@ -331,6 +317,28 @@ namespace SimpleStore.StoreBlock
                     MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: OnTransactionBuy Spawned {compDef.Id.SubtypeName}");
 
                 }
+            }
+        }
+
+        private void ResetNPCAccountBallance()
+        {
+            Players.Clear();
+            MyAPIGateway.Multiplayer.Players.GetPlayers(Players);
+
+            IMyPlayer player = Players.FirstOrDefault(_player => _player.IdentityId == myStoreBlock.OwnerId);
+
+            if (player == null && myStoreBlock.OwnerId > 0) // it is not a player so must be owned by an npc
+            {
+                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Not owned by player, adjusting Account ballance");
+
+                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
+                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
+
+                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)100 * 1000 * 1000000);
+            }
+            else
+            {
+                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Owned by player, not adjusting Account ballance");
             }
         }
 
