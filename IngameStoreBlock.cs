@@ -55,6 +55,7 @@ namespace SimpleStore.StoreBlock
         float refineYield = DefaultRefineYield;
         bool debugLog = false;
         float transactionFee = 0.02f;
+        private long lastBlockOwner = -1;
 
         List<IMyPlayer> Players = new List<IMyPlayer>();
         List<Sandbox.ModAPI.Ingame.MyStoreQueryItem> StoreItems = new List<Sandbox.ModAPI.Ingame.MyStoreQueryItem>();
@@ -322,6 +323,11 @@ namespace SimpleStore.StoreBlock
 
         private void ResetNPCAccountBallance()
         {
+            if (lastBlockOwner == myStoreBlock.OwnerId)
+                return;
+
+            lastBlockOwner = myStoreBlock.OwnerId;
+
             Players.Clear();
             MyAPIGateway.Multiplayer.Players.GetPlayers(Players);
 
@@ -329,7 +335,7 @@ namespace SimpleStore.StoreBlock
 
             if (player == null && myStoreBlock.OwnerId > 0) // it is not a player so must be owned by an npc
             {
-                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Not owned by player, adjusting Account ballance");
+                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Owned by NPC, adjusting Account ballance");
 
                 MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
                 MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
@@ -338,7 +344,7 @@ namespace SimpleStore.StoreBlock
             }
             else
             {
-                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Owned by player, not adjusting Account ballance");
+                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Not owned by NPC, not adjusting Account ballance");
             }
         }
 
