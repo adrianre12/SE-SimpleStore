@@ -335,7 +335,7 @@ namespace SimpleStore.StoreBlock
 
             if (player == null && myStoreBlock.OwnerId > 0) // it is not a player so must be owned by an npc
             {
-                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Owned by NPC, adjusting Account ballance");
+                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Owned by NPC, adjusting Account balance");
 
                 MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
                 MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
@@ -344,7 +344,7 @@ namespace SimpleStore.StoreBlock
             }
             else
             {
-                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Not owned by NPC, not adjusting Account ballance");
+                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Not owned by NPC, not adjusting Account balance");
             }
         }
 
