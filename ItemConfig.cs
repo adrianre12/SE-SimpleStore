@@ -12,9 +12,31 @@ namespace SimpleStore.StoreBlock
         private static Random rnd = new Random();
         Dictionary<MyDefinitionId, int> ComponentMinimalPrice = new Dictionary<MyDefinitionId, int>();
         Dictionary<MyDefinitionId, int> BlockMinimalPrice = new Dictionary<MyDefinitionId, int>();
+
+        const string errString = "<Error";
+        const string errTooManyRows = "To many items";
+        const int maxItemCount = 30;
+
+        public StoreItem Buy;
+        public StoreItem Sell;
+        ErrorType error = ErrorType.None;
+        bool removeError = false;
+        string raw;
+        int itemCounter = 0;
+
+        enum ErrorType
+        {
+            None,
+            Value,
+            ToManyRows
+        }
+
         public class StoreItem
         {
             private int count = 0;
+            public int RawCount
+            { get { return count; } }
+
             public int Count
             {
                 get { return CalculateCount(); }
@@ -198,14 +220,6 @@ namespace SimpleStore.StoreBlock
             }
         }
 
-        const string errString = "<Error";
-
-        public StoreItem Buy;
-        public StoreItem Sell;
-        bool error = false;
-        bool removeError = false;
-        string raw;
-
         public ItemConfig()
         {
             Buy = new StoreItem();
@@ -217,7 +231,7 @@ namespace SimpleStore.StoreBlock
         {
             this.raw = raw;
             this.removeError = false;
-            this.error = true;
+            this.error = ErrorType.Value;
             string[] buySell = raw.Split(',');
             if (buySell.Length < 2)
                 return false;
@@ -228,22 +242,46 @@ namespace SimpleStore.StoreBlock
             if (!this.Sell.TryParse(buySell[1], true))
                 return false;
 
+            if (Buy.RawCount > 0)
+                ++itemCounter;
+            if (Sell.RawCount > 0)
+                ++itemCounter;
+
+            if (itemCounter > maxItemCount && (Buy.RawCount + Sell.RawCount > 0))
+            {
+                error = ErrorType.ToManyRows;
+                return false;
+            }
+
             if (buySell.Length > 2 && buySell[2].Contains(errString))
             {
                 this.removeError = true;
             }
 
-            this.error = false;
+            this.error = ErrorType.None;
             return true;
         }
 
         public override string ToString()
         {
-            if (this.error)
+            switch (error)
             {
-                if (this.raw.Contains(errString))
-                    return raw;
-                return $"{raw},{errString}";
+                case ErrorType.Value:
+                    {
+                        if (this.raw.Contains(errString))
+                            return raw;
+                        return $"{raw},{errString}";
+                    }
+                case ErrorType.ToManyRows:
+                    {
+                        if (this.raw.Contains(errString))
+                            return raw;
+                        return $"{raw},{errString} {errTooManyRows}";
+                    }
+                default: //None
+                    {
+                        break;
+                    }
             }
             return $"{Buy},{Sell}";
         }
