@@ -30,4 +30,7 @@
     <AdditionalFiles Remove="Content\Data\SBC files can go here" />
     <None Remove="thumb.png" />
   </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="TorchDeploy.cmd" />
+  </Target>
 </Project>

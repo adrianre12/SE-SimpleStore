@@ -30,6 +30,7 @@ namespace SimpleStore.StoreBlock
         const string RefreshPeriod = "RefreshPeriodMins";
         const string RefineYield = "RefineYield";
         const string DebugLog = "Debug";
+        const string VariableId = nameof(IngameStoreBlockGameLogic);
 
         const int DefaultSpawnDistance = 100;
         const int DefaultRefreshPeriod = 20; //mins
@@ -91,11 +92,35 @@ namespace SimpleStore.StoreBlock
 
         public override void UpdateAfterSimulation100()
         {
+            if (MyAPIGateway.Session.IsServer)
+                UpdateAfterSimulation100Host();
+            else
+                UpdateAfterSimulation100Client();
+        }
+
+        public void UpdateAfterSimulation100Client()
+        {
+            if (myStoreBlock.CustomData != "")
+                return;
+            try
+            {
+                string saveText;
+                if (!MyAPIGateway.Utilities.GetVariable<string>(VariableId, out saveText))
+                    throw new Exception($"Variable {VariableId} not found in game save!");
+                myStoreBlock.CustomData = Encoding.UTF8.GetString(Convert.FromBase64String(saveText));
+                MyLog.Default.WriteLine("Client loaded default config");
+            }
+            catch (Exception e)
+            {
+                MyLog.Default.WriteLine($"Error getting default config\n {e}");
+                myStoreBlock.CustomData = "Error";
+            }
+        }
+
+        public void UpdateAfterSimulation100Host()
+        {
             if (myStoreBlock.CustomData == "")
                 CreateConfig();
-
-            if (!MyAPIGateway.Session.IsServer)
-                return;
 
             if (myStoreBlock.Enabled != lastBlockEnabledState)
             {
@@ -328,24 +353,24 @@ namespace SimpleStore.StoreBlock
 
             lastBlockOwner = myStoreBlock.OwnerId;
 
-            Players.Clear();
-            MyAPIGateway.Multiplayer.Players.GetPlayers(Players);
-
-            IMyPlayer player = Players.FirstOrDefault(_player => _player.IdentityId == myStoreBlock.OwnerId);
-
-            if (player == null && myStoreBlock.OwnerId > 0) // it is not a player so must be owned by an npc
+            List<IMyIdentity> identities = new List<IMyIdentity>();
+            MyAPIGateway.Multiplayer.Players.GetAllIdentites(identities, identity => identity.IdentityId == myStoreBlock.OwnerId);
+            foreach (var identity in identities)
             {
-                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Owned by NPC, adjusting Account balance");
-
-                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
-                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
-
-                MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)100 * 1000 * 1000000);
+                //Log.Msg($"name='{identity.DisplayName} id={identity.IdentityId} model={identity.Model == null} dead={identity.IsDead}");
+                if (identity.IdentityId == myStoreBlock.OwnerId && identity.Model != null) // dirty hack to identify non npc.
+                {
+                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Owned by '{identity.DisplayName}', not adjusting Account balance");
+                    return;
+                }
             }
-            else
-            {
-                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Not owned by NPC, not adjusting Account balance");
-            }
+
+            MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Owned by NPC, adjusting Account balance, I can't do anything about the errors");
+
+            MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
+            MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
+
+            MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)100 * 1000 * 1000000);
         }
 
         private string FixKey(string key)
@@ -423,6 +448,7 @@ namespace SimpleStore.StoreBlock
 
             config.Invalidate();
             myStoreBlock.CustomData = config.ToStringSorted();
+            MyAPIGateway.Utilities.SetVariable<string>(VariableId, Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(myStoreBlock.CustomData)));
         }
 
         private bool TryLoadConfig()
