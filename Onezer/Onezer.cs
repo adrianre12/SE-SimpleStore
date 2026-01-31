@@ -22,7 +22,9 @@ namespace SimpleStore.Onezer
             if (!config.Enabled)
             {
                 Log.Msg("Onezer not Enabled");
+                return;
             }
+
             var allDefs = MyDefinitionManager.Static.GetAllDefinitions();
             foreach (var physicalItem in allDefs.OfType<MyPhysicalItemDefinition>())
             {
