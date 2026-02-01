@@ -6,7 +6,6 @@ using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using VRage.Game;
 using VRage.Game.Components;
@@ -24,22 +23,6 @@ namespace SimpleStore.StoreBlock
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_StoreBlock), false, "SimpleStoreBlock")]
     public class IngameStoreBlockGameLogic : MyGameLogicComponent
     {
-        const string ConfigSettings = "Settings";
-        const string Resell = "ResellItems"; //deprecated
-        const string SpawnDistance = "SpawnDistance";
-        const string RefreshPeriod = "RefreshPeriodMins";
-        const string RefineYield = "RefineYield";
-        const string DebugLog = "Debug";
-        const string VariableId = nameof(IngameStoreBlockGameLogic);
-
-        const int DefaultSpawnDistance = 100;
-        const int DefaultRefreshPeriod = 20; //mins
-        const int MinRefreshPeriod = 375;  // 100's of ticks mins * 37.5
-        const float DefaultRefineYield = 1;
-
-        private List<string> BlacklistItems = new List<string> { "RestrictedConstruction", "CubePlacerItem", "GoodAIRewardPunishmentTool", "SpaceCredit" };
-        private List<string> WhitelistItems = new List<string> { "NATO_5p56x45mm", "Organic", "Scrap" };
-
         private List<MyDefinitionId> AutoRefineList = new List<MyDefinitionId>();
 
         internal IMyStoreBlock myStoreBlock;
@@ -51,9 +34,9 @@ namespace SimpleStore.StoreBlock
         bool UpdateShop = true;
         int UpdateCounter = 0;
         bool resellItems = false; //deprecated
-        int spawnDistance = DefaultSpawnDistance;
-        int refreshCounterLimit = DefaultRefreshPeriod;
-        float refineYield = DefaultRefineYield;
+        int spawnDistance = DefaultConfig.DefaultSpawnDistance;
+        int refreshCounterLimit = DefaultConfig.DefaultRefreshPeriod;
+        float refineYield = DefaultConfig.DefaultRefineYield;
         bool debugLog = false;
         float transactionFee = 0.02f;
         private long lastBlockOwner = -1;
@@ -79,49 +62,30 @@ namespace SimpleStore.StoreBlock
         {
             base.UpdateOnceBeforeFrame();
             NeedsUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
-            if (!MyAPIGateway.Session.IsServer)
-                return;
 
-            var x = MyDefinitionManager.Static.GetDefinition<MySessionComponentEconomyDefinition>("Default");
-            if (x != null)
+            if (MyAPIGateway.Session.IsServer)
             {
-                transactionFee = x.TransactionFee;
-                //MyLog.Default.WriteLine($"SimpleStore.StoreBlock: TransactionFee loaded ({transactionFee})");
+                var x = MyDefinitionManager.Static.GetDefinition<MySessionComponentEconomyDefinition>("Default");
+                if (x != null)
+                {
+                    transactionFee = x.TransactionFee;
+                    //MyLog.Default.WriteLine($"SimpleStore.StoreBlock: TransactionFee loaded ({transactionFee})");
+                }
             }
         }
 
         public override void UpdateAfterSimulation100()
         {
+            if (myStoreBlock.CustomData == "")
+                myStoreBlock.CustomData = Onezer.Instance.DefaultCustomData;
+
             if (MyAPIGateway.Session.IsServer)
                 UpdateAfterSimulation100Host();
-            else
-                UpdateAfterSimulation100Client();
         }
 
-        public void UpdateAfterSimulation100Client()
-        {
-            if (myStoreBlock.CustomData != "")
-                return;
-            try
-            {
-                string saveText;
-                if (!MyAPIGateway.Utilities.GetVariable<string>(VariableId, out saveText))
-                    throw new Exception($"Variable {VariableId} not found in game save!");
-                myStoreBlock.CustomData = Encoding.UTF8.GetString(Convert.FromBase64String(saveText));
-                MyLog.Default.WriteLine("Client loaded default config");
-            }
-            catch (Exception e)
-            {
-                MyLog.Default.WriteLine($"Error getting default config\n {e}");
-                myStoreBlock.CustomData = "Error";
-            }
-        }
 
         public void UpdateAfterSimulation100Host()
         {
-            if (myStoreBlock.CustomData == "")
-                CreateConfig();
-
             if (myStoreBlock.Enabled != lastBlockEnabledState)
             {
                 lastBlockEnabledState = myStoreBlock.Enabled;
@@ -162,7 +126,7 @@ namespace SimpleStore.StoreBlock
 
             foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions())
             {
-                subtypeName = FixKey(definition.Id.SubtypeName);
+                subtypeName = DefaultConfig.FixKey(definition.Id.SubtypeName);
                 match = Regex.Match(definition.Id.TypeId.ToString() + subtypeName, @"[\[\]\r\n|=]");
                 if (match.Success)
                     continue;
@@ -235,7 +199,7 @@ namespace SimpleStore.StoreBlock
             UpdateCounter = 0;
             if (UpdateShop)
             {
-                UpdateCounter = rnd.Next((int)(refreshCounterLimit - MinRefreshPeriod * 0.2)); // stop them all refreshing at the same time.
+                UpdateCounter = rnd.Next((int)(refreshCounterLimit - DefaultConfig.MinRefreshPeriod * 0.2)); // stop them all refreshing at the same time.
                 MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: UpdateCounter={UpdateCounter}");
             }
             UpdateShop = false;
@@ -373,84 +337,6 @@ namespace SimpleStore.StoreBlock
             MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)100 * 1000 * 1000000);
         }
 
-        private string FixKey(string key)
-        {
-            return key.Replace('[', '{').Replace(']', '}'); // Replace [ ]  with { } for mods like Better Stone
-        }
-
-        private void CreateConfig()
-        {
-            MyLog.Default.WriteLine("SimpleStore.StoreBlock: Start CreateConfig");
-
-            config.Clear();
-            config.AddSection(ConfigSettings);
-            var sb = new StringBuilder();
-            sb.AppendLine("Do not activate too many items, the store has a total of 30 slots.");
-            sb.AppendLine("Auto-generated prices are the Keen minimum, setting lower value will log an error.");
-            sb.AppendLine("To force a store refresh, turn store block off wait 3s and turn it on. Auto refresh minimum and default is 20 minutes");
-            sb.AppendLine("Config errors will cause the store block to turn off");
-            sb.AppendLine("Format is BuyAmount:BuyPrice,SellAmount:SellPrice");
-            config.SetSectionComment(ConfigSettings, sb.ToString());
-
-            //config.Set(ConfigSettings, Resell, false);
-            config.Set(ConfigSettings, SpawnDistance, DefaultSpawnDistance);
-            config.Set(ConfigSettings, RefreshPeriod, DefaultRefreshPeriod);
-            config.Set(ConfigSettings, RefineYield, DefaultRefineYield);
-
-            config.AddSection("Ore");
-            config.AddSection("Ingot");
-            config.AddSection("Component");
-            config.AddSection("PhysicalGunObject");
-            config.AddSection("AmmoMagazine");
-            config.AddSection("OxygenContainerObject");
-            config.AddSection("GasContainerObject");
-            config.AddSection("ConsumableItem");
-            config.AddSection("PhysicalObject");
-
-            string section;
-            Match match;
-
-            ItemConfig defaultItemConfig = new ItemConfig();
-            string subtypeName = "";
-            bool ok;
-            foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions())
-            {
-                if (BlacklistItems.Contains(definition.Id.SubtypeName))
-                    continue;
-
-                subtypeName = FixKey(definition.Id.SubtypeName);
-                match = Regex.Match(definition.Id.TypeId.ToString() + subtypeName, @"[\[\]\r\n|=]");
-                if (match.Success)
-                    continue;
-
-                section = definition.Id.TypeId.ToString().Remove(0, 16); //remove "MyObjectBuilder_"
-
-                if (config.ContainsSection(section))
-                {
-                    ok = false;
-                    if (!definition.Public && MyDefinitionManager.Static.GetPrefabDefinition(definition.Id.SubtypeName) != null)
-                    {
-                        ok = true;
-                    }
-                    if (WhitelistItems.Contains(definition.Id.SubtypeName) || (definition.Public && MyDefinitionManager.Static.GetPhysicalItemDefinition(definition.Id).CanPlayerOrder))
-                    {
-                        ok = true;
-                    }
-                    if (ok)
-                    {
-                        defaultItemConfig.SetDefaultPrices(definition.Id);
-                        config.Set(section, subtypeName, defaultItemConfig.ToString());
-                        continue;
-                    }
-                    MyLog.Default.WriteLine($"skipping {subtypeName} public={definition.Public}");
-                }
-            }
-
-            config.Invalidate();
-            myStoreBlock.CustomData = config.ToStringSorted();
-            MyAPIGateway.Utilities.SetVariable<string>(VariableId, Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(myStoreBlock.CustomData)));
-        }
-
         private bool TryLoadConfig()
         {
             MyLog.Default.WriteLine("SimpleStore.StoreBlock: Loading Config");
@@ -460,14 +346,14 @@ namespace SimpleStore.StoreBlock
 
             if (config.TryParse(myStoreBlock.CustomData))
             {
-                if (!config.ContainsSection(ConfigSettings))
+                if (!config.ContainsSection(DefaultConfig.ConfigSettings))
                     configOK = false;
 
-                resellItems = config.Get(ConfigSettings, Resell).ToBoolean(false);
-                spawnDistance = config.Get(ConfigSettings, SpawnDistance).ToInt32(DefaultSpawnDistance);
-                refreshCounterLimit = Math.Max((int)(config.Get(ConfigSettings, RefreshPeriod).ToInt32(DefaultRefreshPeriod) * 37.5), MinRefreshPeriod);
-                refineYield = config.Get(ConfigSettings, RefineYield).ToSingle(DefaultRefineYield);
-                debugLog = config.Get(ConfigSettings, DebugLog).ToBoolean(false);
+                resellItems = config.Get(DefaultConfig.ConfigSettings, DefaultConfig.Resell).ToBoolean(false);
+                spawnDistance = config.Get(DefaultConfig.ConfigSettings, DefaultConfig.SpawnDistance).ToInt32(DefaultConfig.DefaultSpawnDistance);
+                refreshCounterLimit = Math.Max((int)(config.Get(DefaultConfig.ConfigSettings, DefaultConfig.RefreshPeriod).ToInt32(DefaultConfig.DefaultRefreshPeriod) * 37.5), DefaultConfig.MinRefreshPeriod);
+                refineYield = config.Get(DefaultConfig.ConfigSettings, DefaultConfig.RefineYield).ToSingle(DefaultConfig.DefaultRefineYield);
+                debugLog = config.Get(DefaultConfig.ConfigSettings, DefaultConfig.DebugLog).ToBoolean(false);
 
                 List<string> sections = new List<string>();
                 List<MyIniKey> keys = new List<MyIniKey>();
@@ -486,7 +372,7 @@ namespace SimpleStore.StoreBlock
                             MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Failed to get {section}:{key.Name}");
                             break;
                         }
-                        if (section == ConfigSettings)
+                        if (section == DefaultConfig.ConfigSettings)
                         {
                             continue;
                         }
@@ -527,5 +413,8 @@ namespace SimpleStore.StoreBlock
             }
             return configOK;
         }
+
+
+
     }
 }

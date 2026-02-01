@@ -5,7 +5,7 @@ using System;
 using System.Xml.Serialization;
 
 
-namespace SimpleStore.Onezer
+namespace SimpleStore
 {
     public partial class OnezerConfig
     {
