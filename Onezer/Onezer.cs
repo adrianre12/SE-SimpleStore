@@ -5,7 +5,6 @@ using System;
 using System.Linq;
 using System.Text;
 using VRage.Game.Components;
-using VRage.Utils;
 
 namespace SimpleStore
 {
@@ -58,11 +57,11 @@ namespace SimpleStore
                 if (!MyAPIGateway.Utilities.GetVariable<string>(VariableId, out saveText))
                     throw new Exception($"Variable {VariableId} not found in game save!");
                 DefaultCustomData = Encoding.UTF8.GetString(Convert.FromBase64String(saveText));
-                MyLog.Default.WriteLine("Client loaded DefaultCustomData");
+                Log.Msg("Client loaded DefaultCustomData");
             }
             catch (Exception e)
             {
-                MyLog.Default.WriteLine($"Error getting DefaultCustomData\n {e}");
+                Log.Msg($"Error getting DefaultCustomData\n {e}");
                 DefaultCustomData = "";
             }
         }

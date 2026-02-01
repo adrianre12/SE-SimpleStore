@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 using VRage.Game.ModAPI.Ingame.Utilities;
-using VRage.Utils;
 
 namespace SimpleStore.StoreBlock
 {
@@ -27,12 +26,12 @@ namespace SimpleStore.StoreBlock
 
         public static string CreateDefaultConfigString()
         {
-            MyLog.Default.WriteLine("SimpleStore.StoreBlock: Start CreateConfig");
+            Log.Msg("Start CreateDefaultConfig");
             MyIni config = new MyIni();
             config.Clear();
             config.AddSection(ConfigSettings);
             var sb = new StringBuilder();
-            sb.AppendLine("Do not activate too many items, the store has a total of 30 slots.");
+            sb.AppendLine("Do not activate too many items, maximum is 30 slots.");
             sb.AppendLine("Auto-generated prices are the Keen minimum, setting lower value will log an error.");
             sb.AppendLine("To force a store refresh, turn store block off wait 3s and turn it on. Auto refresh minimum and default is 20 minutes");
             sb.AppendLine("Config errors will cause the store block to turn off");
@@ -89,7 +88,7 @@ namespace SimpleStore.StoreBlock
                         config.Set(section, subtypeName, defaultItemConfig.ToString());
                         continue;
                     }
-                    MyLog.Default.WriteLine($"skipping {subtypeName} public={definition.Public}");
+                    Log.Msg($"skipping {subtypeName} public={definition.Public}");
                 }
             }
 

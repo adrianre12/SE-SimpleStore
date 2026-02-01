@@ -15,7 +15,6 @@ using VRage.Game.ModAPI;
 using VRage.Game.ModAPI.Ingame.Utilities;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
-using VRage.Utils;
 using VRageMath;
 
 namespace SimpleStore.StoreBlock
@@ -37,7 +36,6 @@ namespace SimpleStore.StoreBlock
         int spawnDistance = DefaultConfig.DefaultSpawnDistance;
         int refreshCounterLimit = DefaultConfig.DefaultRefreshPeriod;
         float refineYield = DefaultConfig.DefaultRefineYield;
-        bool debugLog = false;
         float transactionFee = 0.02f;
         private long lastBlockOwner = -1;
 
@@ -53,9 +51,9 @@ namespace SimpleStore.StoreBlock
             if (!MyAPIGateway.Session.IsServer)
                 return;
 
-            MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: Ores loaded ({RefineOre.OresLoaded()})");
+            if (Log.Debug) Log.Msg($"Ores loaded ({RefineOre.OresLoaded()})");
 
-            MyLog.Default.WriteLine("SimpleStore.StoreBlock: Loaded...");
+            Log.Msg("Loaded...");
         }
 
         public override void UpdateOnceBeforeFrame()
@@ -69,7 +67,7 @@ namespace SimpleStore.StoreBlock
                 if (x != null)
                 {
                     transactionFee = x.TransactionFee;
-                    //MyLog.Default.WriteLine($"SimpleStore.StoreBlock: TransactionFee loaded ({transactionFee})");
+                    if (Log.Debug) Log.Msg($"TransactionFee loaded ({transactionFee})");
                 }
             }
         }
@@ -107,7 +105,7 @@ namespace SimpleStore.StoreBlock
             if (!UpdateShop && UpdateCounter <= refreshCounterLimit)
                 return;
 
-            MyLog.Default.WriteLine("SimpleStore.StoreBlock: Starting to update store");
+            Log.Msg("Starting to update store");
 
             ResetNPCAccountBallance();
 
@@ -142,7 +140,7 @@ namespace SimpleStore.StoreBlock
                 if (!itemConfig.TryParse(rawIniValue))
                 {
                     myStoreBlock.Enabled = false;
-                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Config error in Custom Data. Grid='{myStoreBlock.CubeGrid.CustomName}' Store='{myStoreBlock.CustomName}'");
+                    Log.Msg($"Config error in Custom Data. Grid='{myStoreBlock.CubeGrid.CustomName}' Store='{myStoreBlock.CustomName}'");
 
                     continue;
                 }
@@ -167,13 +165,13 @@ namespace SimpleStore.StoreBlock
                     itemData = new MyStoreItemData(definition.Id, sellCount, itemConfig.Sell.Price,
                         (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransactionSell(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
 
-                    MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: InsertOrder {definition.Id.SubtypeName}  Count={sellCount} Price={itemConfig.Sell.Price}");
+                    if (Log.Debug) Log.Msg($"InsertOrder {definition.Id.SubtypeName}  Count={sellCount} Price={itemConfig.Sell.Price}");
                     result = myStoreBlock.InsertOrder(itemData, out id);
                     if (result != Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
-                        MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Sell result {definition.Id.SubtypeName}: {result}");
+                        Log.Msg($"Sell result {definition.Id.SubtypeName}: {result}");
                     if (itemConfig.Sell.IsAutoRefine)
                     {
-                        MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: Sell AutoRefine {definition.Id.SubtypeName}");
+                        if (Log.Debug) Log.Msg($"Sell AutoRefine {definition.Id.SubtypeName}");
                         AutoRefineList.Add(definition.Id);
                     }
                 }
@@ -185,13 +183,13 @@ namespace SimpleStore.StoreBlock
                     itemData = new MyStoreItemData(definition.Id, buyCount, itemConfig.Buy.Price,
                         (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransactionBuy(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
 
-                    MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: InsertOffer {definition.Id.SubtypeName} Count={buyCount} Price={itemConfig.Buy.Price}");
+                    if (Log.Debug) Log.Msg($"InsertOffer {definition.Id.SubtypeName} Count={buyCount} Price={itemConfig.Buy.Price}");
                     result = myStoreBlock.InsertOffer(itemData, out id);
 
                     if (result == Sandbox.ModAPI.Ingame.MyStoreInsertResults.Success)
                         MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, definition.Id, buyCount);
                     else
-                        MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Buy result {definition.Id.SubtypeName}: {result}");
+                        Log.Msg($"Buy result {definition.Id.SubtypeName}: {result}");
 
                 }
             }
@@ -200,14 +198,14 @@ namespace SimpleStore.StoreBlock
             if (UpdateShop)
             {
                 UpdateCounter = rnd.Next((int)(refreshCounterLimit - DefaultConfig.MinRefreshPeriod * 0.2)); // stop them all refreshing at the same time.
-                MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: UpdateCounter={UpdateCounter}");
+                if (Log.Debug) Log.Msg($" UpdateCounter={UpdateCounter}");
             }
             UpdateShop = false;
         }
 
         private void OnTransactionSell(int amountSold, int amountRemaining, long priceOfTransaction, long ownerOfBlock, long buyerSeller, MyDefinitionBase compDef)
         {
-            MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: OnTransactionSell {compDef.Id.TypeId} {compDef.Id.SubtypeName}");
+            if (Log.Debug) Log.Msg($"OnTransactionSell {compDef.Id.TypeId} {compDef.Id.SubtypeName}");
             MyAPIGateway.Multiplayer.Players.RequestChangeBalance(ownerOfBlock, priceOfTransaction);
 
             if (!AutoRefineList.Contains(compDef.Id))
@@ -219,23 +217,23 @@ namespace SimpleStore.StoreBlock
             {
                 int refineN = amountSold / amountReq;
                 MyVisualScriptLogicProvider.RemoveFromEntityInventory(myStoreBlock.Name, compDef.Id, refineN * amountReq);
-                MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: OnTransactionSell amountSold={amountSold} amountReq={amountReq} refineN={refineN} oreUsed={refineN * amountReq}");
+                if (Log.Debug) Log.Msg($"OnTransactionSell amountSold={amountSold} amountReq={amountReq} refineN={refineN} oreUsed={refineN * amountReq}");
                 foreach (var ingot in ingots)
                 {
                     int amountRefined = (int)(refineYield * refineN * ((float)ingot.Amount));
                     MyVisualScriptLogicProvider.AddToInventory(myStoreBlock.Name, ingot.Id, amountRefined);
-                    MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: OnTransactionSell added {amountRefined} {ingot.Id.SubtypeName}");
+                    if (Log.Debug) Log.Msg($"OnTransactionSell added {amountRefined} {ingot.Id.SubtypeName}");
                 }
             }
             else
             {
-                MyLog.Default.WriteLine($"SimpleStore.StoreBlock: OnTransactionSell TryGetIngots failed {compDef.Id.SubtypeName}");
+                if (Log.Debug) Log.Msg($"OnTransactionSell TryGetIngots failed {compDef.Id.SubtypeName}");
             }
         }
 
         private void OnTransactionBuy(int amountBought, int amountRemaining, long priceOfTransaction, long ownerOfBlock, long buyerSeller, MyDefinitionBase compDef)
         {
-            MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: OnTransactionBuy {compDef.Id.TypeId} {compDef.Id.SubtypeName}");
+            if (Log.Debug) Log.Msg($"OnTransactionBuy {compDef.Id.TypeId} {compDef.Id.SubtypeName}");
 
             MyAPIGateway.Multiplayer.Players.RequestChangeBalance(ownerOfBlock, (long)(-priceOfTransaction * (1 - transactionFee)));
 
@@ -260,7 +258,7 @@ namespace SimpleStore.StoreBlock
                     else
                     {
                         player.RequestChangeBalance(priceOfTransaction);
-                        MyLog.Default.WriteLine("SimpleStore.StoreBlock: Error can't find Prefab Item (no Spawn)");
+                        Log.Msg("Error can't find Prefab Item (no Spawn)");
                         return;
                     }
 
@@ -304,7 +302,7 @@ namespace SimpleStore.StoreBlock
                     }
 
                     MyVisualScriptLogicProvider.AddGPS(compDef.Id.SubtypeName, compDef.Id.SubtypeName, spawnPos, Color.Green, disappearsInS: 0, playerId: player.IdentityId);
-                    MyLog.Default.WriteLineIf(debugLog, $"SimpleStore.StoreBlock: OnTransactionBuy Spawned {compDef.Id.SubtypeName}");
+                    if (Log.Debug) Log.Msg($"OnTransactionBuy Spawned {compDef.Id.SubtypeName}");
 
                 }
             }
@@ -324,12 +322,12 @@ namespace SimpleStore.StoreBlock
                 //Log.Msg($"name='{identity.DisplayName} id={identity.IdentityId} model={identity.Model == null} dead={identity.IsDead}");
                 if (identity.IdentityId == myStoreBlock.OwnerId && identity.Model != null) // dirty hack to identify non npc.
                 {
-                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Owned by '{identity.DisplayName}', not adjusting Account balance");
+                    Log.Msg($"Owned by '{identity.DisplayName}', not adjusting Account balance");
                     return;
                 }
             }
 
-            MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Owned by NPC, adjusting Account balance, I can't do anything about the errors");
+            Log.Msg($"Owned by NPC, adjusting Account balance, I can't do anything about the errors");
 
             MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
             MyAPIGateway.Multiplayer.Players.RequestChangeBalance(myStoreBlock.OwnerId, (long)-100 * 1000 * 1000000);
@@ -339,7 +337,7 @@ namespace SimpleStore.StoreBlock
 
         private bool TryLoadConfig()
         {
-            MyLog.Default.WriteLine("SimpleStore.StoreBlock: Loading Config");
+            Log.Msg("Loading Config");
 
             bool configOK = true;
             bool storeConfig = false;
@@ -353,7 +351,7 @@ namespace SimpleStore.StoreBlock
                 spawnDistance = config.Get(DefaultConfig.ConfigSettings, DefaultConfig.SpawnDistance).ToInt32(DefaultConfig.DefaultSpawnDistance);
                 refreshCounterLimit = Math.Max((int)(config.Get(DefaultConfig.ConfigSettings, DefaultConfig.RefreshPeriod).ToInt32(DefaultConfig.DefaultRefreshPeriod) * 37.5), DefaultConfig.MinRefreshPeriod);
                 refineYield = config.Get(DefaultConfig.ConfigSettings, DefaultConfig.RefineYield).ToSingle(DefaultConfig.DefaultRefineYield);
-                debugLog = config.Get(DefaultConfig.ConfigSettings, DefaultConfig.DebugLog).ToBoolean(false);
+                Log.Debug = config.Get(DefaultConfig.ConfigSettings, DefaultConfig.DebugLog).ToBoolean(false);
 
                 List<string> sections = new List<string>();
                 List<MyIniKey> keys = new List<MyIniKey>();
@@ -369,7 +367,7 @@ namespace SimpleStore.StoreBlock
                         if (!config.Get(section, key.Name).TryGetString(out rawIniValue))
                         {
                             configOK = false;
-                            MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Failed to get {section}:{key.Name}");
+                            Log.Msg($"Failed to get {section}:{key.Name}");
                             break;
                         }
                         if (section == DefaultConfig.ConfigSettings)
@@ -400,7 +398,7 @@ namespace SimpleStore.StoreBlock
 
                 if (!configOK)
                 {
-                    MyLog.Default.WriteLine($"SimpleStore.StoreBlock: Config error Grid='{myStoreBlock.CubeGrid.CustomName}' Store='{myStoreBlock.CustomName}'");
+                    Log.Msg($"Config error Grid='{myStoreBlock.CubeGrid.CustomName}' Store='{myStoreBlock.CustomName}'");
                     myStoreBlock.Enabled = false;
                 }
 
@@ -408,7 +406,7 @@ namespace SimpleStore.StoreBlock
             else
             {
                 configOK = false;
-                MyLog.Default.WriteLine("SimpleStore.StoreBlock: Config Syntax error");
+                Log.Msg("Config Syntax error");
                 myStoreBlock.Enabled = false;
             }
             return configOK;
