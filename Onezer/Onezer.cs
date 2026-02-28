@@ -56,8 +56,16 @@ namespace SimpleStore
                 }
                 return;
             }
-            Log.Msg("Onezer using PriceFile");
+            Log.Msg("Onezer UsePriceFile set");
             LoadPriceFile();
+
+            DefaultCustomData = DefaultConfig.CreateDefaultConfigString();
+            MyAPIGateway.Utilities.SetVariable<string>(VariableId, Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(DefaultCustomData)));
+        }
+
+        public override void BeforeStart()
+        {
+            Log.Msg("Before Start");
         }
 
         private void LoadDataClient()

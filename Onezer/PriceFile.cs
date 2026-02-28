@@ -19,27 +19,28 @@ namespace SimpleStore
         {
             StringBuilder sbAll = new StringBuilder();
             StringBuilder sbPrice = new StringBuilder();
-            string subtypeName;
             string itemType;
+            string defId;
 
             foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions().OfType<MyPhysicalItemDefinition>())
             {
-                if (Log.Debug) Log.Msg($"Found {definition.ToString()}");
-                itemType = definition.Id.TypeId.ToString();
-                subtypeName = definition.Id.SubtypeName;
+                defId = definition.ToString();
+                if (Log.Debug) Log.Msg($"Found {defId}");
 
-                if (Regex.Match(itemType + subtypeName, @"[\[\]\r\n|=]").Success)
+                if (Regex.Match(defId, @"[\[\]\r\n|=]").Success)
                 {
-                    Log.Msg($"Contains '[]\r\n|=' Skipping  {itemType}/{subtypeName}");
+                    Log.Msg($"Contains '[]\r\n|=' Skipping  {defId}");
                     continue;
                 }
+
+                itemType = definition.Id.TypeId.ToString();
                 if (BlacklistTypes.Contains(itemType))
                 {
                     if (Log.Debug) Log.Msg($"Skipping Blacklisted {itemType}");
                     continue;
                 }
 
-                string line = $"{itemType}/{subtypeName}={definition.MinimalPricePerUnit}";
+                string line = $"{defId}={definition.MinimalPricePerUnit}";
                 sbAll.AppendLine(line);
                 if (definition.MinimalPricePerUnit > 0)
                     sbPrice.AppendLine(line);
@@ -71,7 +72,7 @@ namespace SimpleStore
 
         private void LoadPriceFile()
         {
-            Log.Msg("Loading Prices file");
+            Log.Msg($"Loading Prices file '{PriceFile}'");
             string line;
             string[] parts;
             int price;
@@ -90,7 +91,7 @@ namespace SimpleStore
                     line = priceReader.ReadLine();
                     while (line != null)
                     {
-                        if (Log.Debug) Log.Msg($"Read line {line}");
+                        //if (Log.Debug) Log.Msg($"Read line {line}");
                         parts = line.Split('=');
                         if (parts.Length != 2)
                         {
@@ -104,6 +105,7 @@ namespace SimpleStore
                         }
                         prices[parts[0]] = price;
                         if (Log.Debug) Log.Msg($"Loaded {parts[0]}={price}");
+                        line = priceReader.ReadLine();
                     }
                 }
             }
@@ -112,12 +114,34 @@ namespace SimpleStore
                 Log.Msg($"ERROR: Reading {PriceFile}.\n{exc.ToString()}");
             }
 
-            var allDefs = MyDefinitionManager.Static.GetAllDefinitions();
-            foreach (var physicalItem in allDefs.OfType<MyPhysicalItemDefinition>())
+            string defId;
+            foreach (var definition in MyDefinitionManager.Static.GetAllDefinitions().OfType<MyPhysicalItemDefinition>())
             {
+                defId = definition.ToString();
+                //if (Log.Debug) Log.Msg($"Found {defId}");
 
-                if (Log.Debug) Log.Msg($"Setting '{physicalItem.Id} from {physicalItem.MinimalPricePerUnit} to {config.MinimalPricePerUnit}");
-                physicalItem.MinimalPricePerUnit = config.MinimalPricePerUnit;
+                if (Regex.Match(defId, @"[\[\]\r\n|=]").Success)
+                {
+                    Log.Msg($"Contains '[]\r\n|=' Skipping  {defId}");
+                    continue;
+                }
+
+                if (!prices.TryGetValue(defId, out price))
+                {
+                    //if (Log.Debug) Log.Msg($"Dict prices didnt find {defId}");
+                    continue;
+                }
+                if (price < -1 || price == 0)
+                {
+                    Log.Msg($"ERROR: Invalid price {defId}={price}");
+                    continue;
+                }
+                if (definition.MinimalPricePerUnit != price)
+                    Log.Msg($"Changing '{defId}' from {definition.MinimalPricePerUnit} to {price}");
+                else
+                    Log.Msg($"No Change '{defId}'");
+
+                definition.MinimalPricePerUnit = price;
             }
         }
     }
