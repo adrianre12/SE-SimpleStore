@@ -9,7 +9,7 @@ using VRage.Game.Components;
 namespace SimpleStore
 {
     [MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
-    class Onezer : MySessionComponentBase
+    partial class Onezer : MySessionComponentBase
     {
         public static Onezer Instance;
 
@@ -31,22 +31,33 @@ namespace SimpleStore
             config = OnezerConfig.LoadConfig();
             Log.Debug = config.Debug;
 
-            DefaultCustomData = DefaultConfig.CreateDefaultConfigString();
-            MyAPIGateway.Utilities.SetVariable<string>(VariableId, Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(DefaultCustomData)));
 
-            if (config.Enabled)
+            if (!config.Enabled)
             {
+                Log.Msg("Onezer not Enabled");
+                DefaultCustomData = DefaultConfig.CreateDefaultConfigString();
+                MyAPIGateway.Utilities.SetVariable<string>(VariableId, Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(DefaultCustomData)));
+                return;
+            }
+
+            CreateDefaultPriceFiles();
+
+            if (!config.UsePriceFile)
+            {
+                Log.Msg("Onezer using MinimalPricePerUnit");
+                DefaultCustomData = DefaultConfig.CreateDefaultConfigString();
+                MyAPIGateway.Utilities.SetVariable<string>(VariableId, Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(DefaultCustomData)));
+
                 var allDefs = MyDefinitionManager.Static.GetAllDefinitions();
                 foreach (var physicalItem in allDefs.OfType<MyPhysicalItemDefinition>())
                 {
                     if (Log.Debug) Log.Msg($"Setting '{physicalItem.Id} from {physicalItem.MinimalPricePerUnit} to {config.MinimalPricePerUnit}");
                     physicalItem.MinimalPricePerUnit = config.MinimalPricePerUnit;
                 }
+                return;
             }
-            else
-            {
-                Log.Msg("Onezer not Enabled");
-            }
+            Log.Msg("Onezer using PriceFile");
+            LoadPriceFile();
         }
 
         private void LoadDataClient()
