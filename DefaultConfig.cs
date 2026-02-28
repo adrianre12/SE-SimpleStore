@@ -51,6 +51,7 @@ namespace SimpleStore.StoreBlock
             config.AddSection("OxygenContainerObject");
             config.AddSection("GasContainerObject");
             config.AddSection("ConsumableItem");
+            config.AddSection("SeedItem");
             config.AddSection("PhysicalObject");
 
             string section;
