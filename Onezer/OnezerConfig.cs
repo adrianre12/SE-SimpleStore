@@ -17,6 +17,7 @@ namespace SimpleStore
         public bool Debug = false;
         public bool Enabled = false;
         public bool UsePriceFile = false;
+        public bool UseMinimalPricePerUnit = true;
         public int MinimalPricePerUnit = 1;
 
         public void Verify()

@@ -34,7 +34,7 @@ namespace SimpleStore
 
             if (!config.Enabled)
             {
-                Log.Msg("Onezer not Enabled");
+                Log.Msg("Onezer is not Enabled");
                 DefaultCustomData = DefaultConfig.CreateDefaultConfigString();
                 MyAPIGateway.Utilities.SetVariable<string>(VariableId, Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(DefaultCustomData)));
                 return;
@@ -42,30 +42,24 @@ namespace SimpleStore
 
             CreateDefaultPriceFiles();
 
-            if (!config.UsePriceFile)
+            if (config.UsePriceFile)
             {
-                Log.Msg("Onezer using MinimalPricePerUnit");
-                DefaultCustomData = DefaultConfig.CreateDefaultConfigString();
-                MyAPIGateway.Utilities.SetVariable<string>(VariableId, Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(DefaultCustomData)));
+                LoadPriceFile();
+            }
 
-                var allDefs = MyDefinitionManager.Static.GetAllDefinitions();
-                foreach (var physicalItem in allDefs.OfType<MyPhysicalItemDefinition>())
+            DefaultCustomData = DefaultConfig.CreateDefaultConfigString();
+            MyAPIGateway.Utilities.SetVariable<string>(VariableId, Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(DefaultCustomData)));
+
+            if (config.UseMinimalPricePerUnit)
+            {
+                Log.Msg($"Onezer setting all MinimalPricePerUnit={config.MinimalPricePerUnit}");
+
+                foreach (var physicalItem in MyDefinitionManager.Static.GetAllDefinitions().OfType<MyPhysicalItemDefinition>())
                 {
                     if (Log.Debug) Log.Msg($"Setting '{physicalItem.Id} from {physicalItem.MinimalPricePerUnit} to {config.MinimalPricePerUnit}");
                     physicalItem.MinimalPricePerUnit = config.MinimalPricePerUnit;
                 }
-                return;
             }
-            Log.Msg("Onezer UsePriceFile set");
-            LoadPriceFile();
-
-            DefaultCustomData = DefaultConfig.CreateDefaultConfigString();
-            MyAPIGateway.Utilities.SetVariable<string>(VariableId, Convert.ToBase64String(ASCIIEncoding.UTF8.GetBytes(DefaultCustomData)));
-        }
-
-        public override void BeforeStart()
-        {
-            Log.Msg("Before Start");
         }
 
         private void LoadDataClient()
