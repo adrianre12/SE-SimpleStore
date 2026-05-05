@@ -162,7 +162,7 @@ namespace SimpleStore.StoreBlock
                 int sellCount = itemConfig.Sell.Count;
                 if (prefab == null && sellCount > 0)
                 {
-                    itemData = new MyStoreItemData(definition.Id, sellCount, itemConfig.Sell.Price,
+                    itemData = new MyStoreItemData(definition.Id, sellCount, itemConfig.Sell.Price, null, //This null is for the gas tanks
                         (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransactionSell(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
 
                     if (Log.Debug) Log.Msg($"InsertOrder {definition.Id.SubtypeName}  Count={sellCount} Price={itemConfig.Sell.Price}");
@@ -180,7 +180,7 @@ namespace SimpleStore.StoreBlock
                 int buyCount = itemConfig.Buy.Count;
                 if (buyCount > 0)
                 {
-                    itemData = new MyStoreItemData(definition.Id, buyCount, itemConfig.Buy.Price,
+                    itemData = new MyStoreItemData(definition.Id, buyCount, itemConfig.Buy.Price, null, //This null is for the gas tanks
                         (amount, left, totalPrice, sellerPlayerId, playerId) => OnTransactionBuy(amount, left, totalPrice, sellerPlayerId, playerId, definition), null);
 
                     if (Log.Debug) Log.Msg($"InsertOffer {definition.Id.SubtypeName} Count={buyCount} Price={itemConfig.Buy.Price}");
